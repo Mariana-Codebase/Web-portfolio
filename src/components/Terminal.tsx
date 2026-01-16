@@ -167,10 +167,10 @@ export const Terminal: React.FC<TerminalProps> = ({ isOpen, onClose, onNavigate,
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-2 sm:p-4">
       <div className={`absolute inset-0 ${isDarkMode ? 'bg-black/90' : 'bg-stone-900/95'}`} onClick={onClose} />
       <div
-        className={`relative w-full max-w-3xl h-[600px] rounded-2xl border-2 ${
+        className={`relative w-full max-w-3xl h-[85vh] md:h-[600px] rounded-2xl border-2 ${
           isDarkMode ? 'bg-[#0a0a0a] border-green-500/50' : 'bg-[#1a1a1a] border-green-400/50'
         } shadow-2xl overflow-hidden font-mono`}
         onClick={(e) => e.stopPropagation()}

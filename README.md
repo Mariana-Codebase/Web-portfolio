@@ -4,14 +4,14 @@ A modern portfolio with a Neo‑Brutalist minimalist vibe, a subtle 3D backgroun
 
 ## Highlights
 
-- 🎨 **Neo‑Brutalist Minimalist UI** with strong typography
-- 🌌 **3D background** (1,500 particles) with gentle pointer response
-- 🌓 **Light/Dark mode** with smooth transitions
-- 🌍 **Native i18n** (ES/EN) without extra dependencies
-- 🧪 **Terminal mode** for quick navigation and settings
-- ⏳ **Splash screen** with custom logo and loader
-- 🔗 **GitHub projects** updated automatically
-- 📱 **Responsive** across devices
+**Neo‑Brutalist Minimalist UI** with strong typography
+**3D background** (1,500 particles) with gentle pointer response
+**Light/Dark mode** with smooth transitions
+**Native i18n** (ES/EN) without extra dependencies
+**Terminal mode** for quick navigation and settings, also just for a fun touch :D
+**Splash screen** with custom logo and loader
+**GitHub projects** updated automatically with my serverless api
+**Responsive** across devices
 
 ## Tech
 
@@ -56,14 +56,6 @@ api/
 
 The projects section uses the serverless endpoint at `/api/github` in production.
 
-### Environment Variables
-
-Set these in Vercel:
-
-- `GITHUB_USER` = `Mariana-Codebase`
-- `GITHUB_TOKEN` = token with `public_repo` scope
-
-The API caches responses and filters out `fork`, `archived`, and `disabled` repos.
 
 ## Terminal Commands
 
@@ -76,4 +68,3 @@ The API caches responses and filters out `fork`, `archived`, and `disabled` repo
 ## Notes
 
 - If `/api` isn’t available locally, the UI falls back to the public GitHub API.
-- Local certificates live in `public/certificados`.
