@@ -43,6 +43,8 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
 
   const isGithubProject = (project: ProjectItem): project is GithubProject => project.source === 'github';
   const hasGithubData = githubProjects.length > 0;
+  const languageOverrides = DATA.githubLanguages ?? {};
+  const categoryOverrides = DATA.githubCategories ?? {};
   const truncateText = (value: string, maxLength: number) => {
     if (value.length <= maxLength) return value;
     return `${value.slice(0, maxLength).trim()}...`;
@@ -53,15 +55,21 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
     ? localProjects
     : localProjects.filter(p => p.c === projectFilter);
 
-  const projectsToRender: ProjectItem[] = hasGithubData ? githubProjects : filteredProjects;
-  const filters: Array<keyof typeof t.categories> = hasGithubData
-    ? ['ALL']
-    : ['ALL', 'WEB', 'MOBILE', 'BACKEND'];
+  const githubFiltered = githubProjects.filter((project) => {
+    if (projectFilter === 'ALL') return true;
+    const category = categoryOverrides[project.t.toLowerCase()];
+    return category === projectFilter;
+  });
+
+  const projectsToRender: ProjectItem[] = hasGithubData ? githubFiltered : filteredProjects;
+  const filters: Array<keyof typeof t.categories> = ['ALL', 'WEB', 'MOBILE', 'BACKEND'];
 
   useEffect(() => {
     if (!hasGithubData || projectFilter === 'ALL') return;
-    setProjectFilter('ALL');
-  }, [hasGithubData, projectFilter, setProjectFilter]);
+    if (githubFiltered.length === 0) {
+      setProjectFilter('ALL');
+    }
+  }, [hasGithubData, projectFilter, githubFiltered.length, setProjectFilter]);
 
   useEffect(() => {
     const user = DATA.githubUser;
@@ -73,7 +81,7 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
         source: 'github' as const,
         t: project.name,
         description: project.description ?? '',
-        language: project.language ?? '',
+        language: project.language || 'Unknown',
         u: project.url
       }));
     };
@@ -95,7 +103,7 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
           const mapped = repos.map((repo: { name: string; description: string | null; language: string | null; html_url: string }) => ({
             name: repo.name,
             description: repo.description ?? '',
-            language: repo.language ?? '',
+            language: repo.language ?? 'Unknown',
             url: repo.html_url
           }));
           setGithubProjects(mapProjects(mapped));
@@ -115,9 +123,9 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
     <div className="space-y-10 animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row justify-between items-end gap-6">
         <h2 className="text-6xl font-black italic tracking-tighter uppercase leading-none">{t.projectsTitle}</h2>
-        <div className={`flex gap-2 ${isDarkMode ? 'bg-white/5' : 'bg-white/80 shadow-md'} p-1.5 rounded-2xl border ${isDarkMode ? themeColors.cardBorder : 'border-stone-400/60'}`}>
+        <div className={`flex flex-wrap gap-2 ${isDarkMode ? 'bg-white/5' : 'bg-white/80 shadow-md'} p-1.5 rounded-2xl border ${isDarkMode ? themeColors.cardBorder : 'border-stone-400/60'}`}>
           {filters.map(cat => (
-            <button key={cat} onClick={() => setProjectFilter(cat)} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${projectFilter === cat ? 'bg-blue-600 text-white shadow-lg' : isDarkMode ? 'text-neutral-400 hover:text-white hover:bg-white/5' : 'text-stone-700 hover:text-stone-900 hover:bg-stone-200/80'}`}>{t.categories[cat as keyof typeof t.categories]}</button>
+            <button key={cat} onClick={() => setProjectFilter(cat)} className={`px-3 md:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${projectFilter === cat ? 'bg-blue-600 text-white shadow-lg' : isDarkMode ? 'text-neutral-400 hover:text-white hover:bg-white/5' : 'text-stone-700 hover:text-stone-900 hover:bg-stone-200/80'}`}>{t.categories[cat as keyof typeof t.categories]}</button>
           ))}
         </div>
       </div>
@@ -126,7 +134,9 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
           <div key={i} className={`group ${themeColors.cardBg} border ${themeColors.cardBorder} p-8 rounded-[2.5rem] hover:border-blue-600 transition-all duration-500 min-h-[360px] flex flex-col justify-between`}>
             <div>
               <span className="text-[11px] font-black text-blue-600 mb-6 block tracking-[0.2em] uppercase italic">
-                // {isGithubProject(p) ? 'GITHUB' : t.categories[p.c]}
+                // {isGithubProject(p)
+                  ? (categoryOverrides[p.t.toLowerCase()] || 'GITHUB')
+                  : t.categories[p.c]}
               </span>
               <h3 className="text-4xl font-black italic tracking-tighter uppercase mb-4 leading-none group-hover:text-blue-600 transition-colors">{p.t}</h3>
               <p className={`${themeColors.textSec} text-base font-medium leading-relaxed mb-4`}>
@@ -135,14 +145,17 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
                   : truncateText(p.d[language], 120)}
               </p>
 
-              <span className={`inline-flex px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border ${
+              <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border ${
                 isDarkMode
                   ? 'bg-white/5 border-white/10 text-neutral-300'
                   : 'bg-stone-100 border-stone-300 text-stone-700'
               }`}>
+                <span className="opacity-60">Tech</span>
+                <span>
                 {isGithubProject(p)
-                  ? (p.language || (language === 'es' ? 'Sin lenguaje' : 'No language'))
-                  : (p.tags?.[0] || (language === 'es' ? 'Sin lenguaje' : 'No language'))}
+                  ? (languageOverrides[p.t.toLowerCase()] || p.language || 'Unknown')
+                  : (p.tags?.[0] || 'Unknown')}
+                </span>
               </span>
               
               {!isGithubProject(p) && p.tags && p.tags.length > 0 && (

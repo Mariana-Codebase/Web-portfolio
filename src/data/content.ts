@@ -69,6 +69,12 @@ export const DATA = {
   surname: "SINISTERRA",
   alias: "MARIANA_DEV",
   githubUser: "Mariana-Codebase",
+  githubLanguages: {
+    "web-portfolio": "React · TypeScript · Vite · Tailwind · Three.js"
+  },
+  githubCategories: {
+    "web-portfolio": "WEB"
+  },
   skills: {
     frontend: ["React", "TypeScript", "TailwindCSS"],
     backend: ["Node.js", "Python", "GraphQL"],

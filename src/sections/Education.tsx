@@ -25,9 +25,9 @@ export const Education: React.FC<EducationProps> = ({ themeColors, certFilter, s
     <div className="space-y-10 animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row justify-between items-end gap-6">
         <h2 className="text-6xl font-black italic tracking-tighter uppercase leading-none">{t.certsTitle}</h2>
-        <div className={`flex gap-2 ${isDarkMode ? 'bg-white/5' : 'bg-white/80 shadow-md'} p-1.5 rounded-2xl border ${isDarkMode ? themeColors.cardBorder : 'border-stone-400/60'}`}>
+        <div className={`flex flex-wrap gap-2 ${isDarkMode ? 'bg-white/5' : 'bg-white/80 shadow-md'} p-1.5 rounded-2xl border ${isDarkMode ? themeColors.cardBorder : 'border-stone-400/60'}`}>
           {['ALL', 'EDU', 'CERT', 'INTERN'].map(cat => (
-            <button key={cat} onClick={() => setCertFilter(cat)} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${certFilter === cat ? 'bg-blue-600 text-white shadow-lg' : isDarkMode ? 'text-neutral-400 hover:text-white hover:bg-white/5' : 'text-stone-700 hover:text-stone-900 hover:bg-stone-200/80'}`}>{t.categories[cat as keyof typeof t.categories]}</button>
+            <button key={cat} onClick={() => setCertFilter(cat)} className={`px-3 md:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${certFilter === cat ? 'bg-blue-600 text-white shadow-lg' : isDarkMode ? 'text-neutral-400 hover:text-white hover:bg-white/5' : 'text-stone-700 hover:text-stone-900 hover:bg-stone-200/80'}`}>{t.categories[cat as keyof typeof t.categories]}</button>
           ))}
         </div>
       </div>

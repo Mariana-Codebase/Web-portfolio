@@ -71,7 +71,7 @@ export default async function handler(req: any, res: any) {
       .map((repo) => ({
         name: repo.name,
         description: repo.description ?? "",
-        language: repo.language ?? "",
+        language: repo.language ?? "Unknown",
         url: repo.html_url,
         updatedAt: repo.updated_at
       }));
