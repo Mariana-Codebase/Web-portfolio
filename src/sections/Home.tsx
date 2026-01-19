@@ -41,7 +41,7 @@ export const Home: React.FC<HomeProps> = ({ themeColors }) => {
             { 
               id: 'github', 
               icon: <Github size={20} />,
-              href: "#", 
+              href: "https://github.com/Mariana-Codebase", 
               tooltip: t.tooltips.github,
               hoverColor: isDarkMode ? 'hover:bg-[#a855f7] hover:text-white hover:border-[#a855f7]' : 'hover:bg-[#a855f7] hover:text-white hover:border-[#a855f7]'
             },
@@ -55,7 +55,7 @@ export const Home: React.FC<HomeProps> = ({ themeColors }) => {
             { 
               id: 'mail', 
               icon: <Mail size={20} />,
-              href: `mailto:contact@${DATA.alias.toLowerCase()}.com`, 
+              href: "mailto:mariana.data@outlook.com", 
               tooltip: t.tooltips.mail,
               hoverColor: isDarkMode ? 'hover:bg-[#f43f5e] hover:text-white hover:border-[#f43f5e]' : 'hover:bg-[#f43f5e] hover:text-white hover:border-[#f43f5e]'
             },
