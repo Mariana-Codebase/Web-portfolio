@@ -67,7 +67,7 @@ export interface Content {
 export const DATA = {
   name: "MARIANA",
   surname: "SINISTERRA",
-  alias: "MARIANA_DEV",
+  alias: "MARIANA-CODEBASE",
   githubUser: "Mariana-Codebase",
   githubLanguages: {
     "web-portfolio": "React / TypeScript / Vite / Tailwind / Three.js"
