@@ -70,7 +70,7 @@ export const DATA = {
   alias: "MARIANA_DEV",
   githubUser: "Mariana-Codebase",
   githubLanguages: {
-    "web-portfolio": "React · TypeScript · Vite · Tailwind · Three.js"
+    "web-portfolio": "React / TypeScript / Vite / Tailwind / Three.js"
   },
   githubCategories: {
     "web-portfolio": "WEB"
@@ -102,12 +102,12 @@ export const DATA = {
 
 export const CONTENT: Record<Language, Content> = {
   es: {
-    role: "Desarrolladora Full-Stack",
+    role: "Estudiante de Ingeniería Informática",
     bio: "Estudiante de Ingeniería Informática. Actualmente exploro la intersección entre el código y la infraestructura, utilizando Python para crear herramientas que hagan los procesos más ágiles y seguros. En constante evolución técnica.",
     nav: { home: "INICIO", about: "PERFIL", certs: "FORMACIÓN", projects: "PROYECTOS" },
     profileTitle: "/ Perfil Profesional",
-    profileSlogan: "Ingeniería que conecta.",
-    profileDesc: "Como Desarrolladora Full-Stack, me enfoco en crear soluciones técnicas que no solo funcionen, sino que escalen. Mi experiencia abarca desde el frontend interactivo hasta arquitecturas backend robustas.",
+    profileSlogan: "Ingeniería aplicada a sistemas reales.",
+    profileDesc: "Como estudiante de Ingeniería Informática, me enfoco en redes, ciberseguridad e infraestructura. Me interesa construir soluciones prácticas y seguras, apoyándome en Python para automatizar procesos y mejorar la operación técnica.",
     stackTitle: "Stack Tecnológico",
     stackCategories: {
       frontend: "Frontend",
@@ -123,12 +123,12 @@ export const CONTENT: Record<Language, Content> = {
     tooltips: { github: "GitHub", linkedin: "LinkedIn", mail: "Correo", leetcode: "LeetCode", theme: "Cambiar Tema" }
   },
   en: {
-    role: "Full-Stack Developer",
+    role: "Computer Engineering Student",
     bio: "Computer Engineering student. Currently exploring the intersection between code and infrastructure, using Python to create tools that make processes more agile and secure. In constant technical evolution.",
     nav: { home: "HOME", about: "PROFILE", certs: "EDUCATION", projects: "PROJECTS" },
     profileTitle: "/ Professional Profile",
-    profileSlogan: "Engineering that connects.",
-    profileDesc: "As a Full-Stack Developer, I focus on creating technical solutions that don't just work, but scale. My experience spans from interactive frontend to robust backend architectures.",
+    profileSlogan: "Engineering for real systems.",
+    profileDesc: "As a Computer Engineering student, I focus on networks, cybersecurity, and infrastructure. I enjoy building practical, secure solutions and use Python to automate processes and improve technical operations.",
     stackTitle: "Tech Stack",
     stackCategories: {
       frontend: "Frontend",
