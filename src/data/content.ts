@@ -71,10 +71,10 @@ export const DATA = {
   githubUser: "Mariana-Codebase",
   githubLanguages: {
     "web-portfolio": "React / TypeScript / Vite / Tailwind / Three.js"
-  },
+  } as Record<string, string>,
   githubCategories: {
     "web-portfolio": "WEB"
-  },
+  } as Record<string, string>,
   skills: {
     frontend: ["React", "TypeScript", "TailwindCSS"],
     backend: ["Node.js", "Python", "GraphQL"],

@@ -43,8 +43,8 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
 
   const isGithubProject = (project: ProjectItem): project is GithubProject => project.source === 'github';
   const hasGithubData = githubProjects.length > 0;
-  const languageOverrides = DATA.githubLanguages ?? {};
-  const categoryOverrides = DATA.githubCategories ?? {};
+  const languageOverrides = (DATA.githubLanguages ?? {}) as Record<string, string>;
+  const categoryOverrides = (DATA.githubCategories ?? {}) as Record<string, string>;
   const truncateText = (value: string, maxLength: number) => {
     if (value.length <= maxLength) return value;
     return `${value.slice(0, maxLength).trim()}...`;
@@ -167,9 +167,9 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
                   {isGithubProject(p)
                     ? (languageOverrides[p.t.toLowerCase()] || p.language || 'Unknown')
                         .split('/')
-                        .map((tech) => tech.trim())
+                        .map((tech: string) => tech.trim())
                         .filter(Boolean)
-                        .map((tech) => (
+                        .map((tech: string) => (
                           <span
                             key={tech}
                             className={`px-3 py-1.5 rounded-full border backdrop-blur-md shadow-sm ${
