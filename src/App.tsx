@@ -1,16 +1,17 @@
-import React, { useState } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
-import { Scene3D } from './components/Scene3D';
 import { LanguageToggle } from './components/LanguageToggle';
 import { ThemeToggle } from './components/ThemeToggle';
 import { SplashScreen } from './components/SplashScreen';
 import { Terminal } from './components/Terminal';
 import { TerminalToggle } from './components/TerminalToggle';
 import { CONTENT, DATA } from './data/content';
-import { Home } from './sections/Home';
-import { Profile } from './sections/Profile';
-import { Education } from './sections/Education';
-import { Projects } from './sections/Projects';
+
+const Scene3D = lazy(() => import('./components/Scene3D').then((m) => ({ default: m.Scene3D })));
+const Home = lazy(() => import('./sections/Home').then((m) => ({ default: m.Home })));
+const Profile = lazy(() => import('./sections/Profile').then((m) => ({ default: m.Profile })));
+const Education = lazy(() => import('./sections/Education').then((m) => ({ default: m.Education })));
+const Projects = lazy(() => import('./sections/Projects').then((m) => ({ default: m.Projects })));
 
 const AppContent: React.FC = () => {
   const { language, isDarkMode, currentSection, setCurrentSection, setTheme, setLanguage, projectFilter, setProjectFilter, certFilter, setCertFilter, isTerminalOpen, setIsTerminalOpen } = useApp();
@@ -40,7 +41,9 @@ const AppContent: React.FC = () => {
       {isLoading && <SplashScreen onComplete={() => setIsLoading(false)} isDarkMode={isDarkMode} />}
       
       <div className={`min-h-screen ${themeColors.bg} ${themeColors.text} transition-colors duration-1000 font-sans selection:bg-blue-600/50 overflow-x-hidden relative ${isLoading ? 'opacity-0' : 'opacity-100 transition-opacity duration-1000'}`}>
-        <Scene3D isDarkMode={isDarkMode} />
+        <Suspense fallback={null}>
+          <Scene3D isDarkMode={isDarkMode} />
+        </Suspense>
 
       <header className="fixed top-4 md:top-8 w-full px-4 md:px-6 z-[100]">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between md:justify-center gap-3">
@@ -110,10 +113,12 @@ const AppContent: React.FC = () => {
       </header>
 
       <main className="max-w-6xl mx-auto px-6 pt-32 md:pt-40 pb-32 md:pb-24 relative z-10">
-        {currentSection === 'home' && <Home themeColors={themeColors} />}
-        {currentSection === 'about' && <Profile themeColors={themeColors} />}
-        {currentSection === 'certs' && <Education themeColors={themeColors} certFilter={certFilter} setCertFilter={setCertFilter} />}
-        {currentSection === 'projects' && <Projects themeColors={themeColors} projectFilter={projectFilter} setProjectFilter={setProjectFilter} />}
+        <Suspense fallback={null}>
+          {currentSection === 'home' && <Home themeColors={themeColors} />}
+          {currentSection === 'about' && <Profile themeColors={themeColors} />}
+          {currentSection === 'certs' && <Education themeColors={themeColors} certFilter={certFilter} setCertFilter={setCertFilter} />}
+          {currentSection === 'projects' && <Projects themeColors={themeColors} projectFilter={projectFilter} setProjectFilter={setProjectFilter} />}
+        </Suspense>
       </main>
 
       <Terminal

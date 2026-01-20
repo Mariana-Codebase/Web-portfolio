@@ -16,6 +16,18 @@ npm run dev
 - Three.js
 - Tailwind CSS
 - React Three Fiber
+- ESLint + Prettier
+
+## Tooling
+
+- `npm run lint` — lint the codebase.
+- `npm run format` — format the codebase with Prettier.
+
+## Updates
+
+- Added ESLint + Prettier for consistent formatting and linting.
+- Updated build tooling (Vite 7) and Three.js to align dependencies.
+- Organized bundles with code-splitting and vendor chunks.
 
 ## Docs
 

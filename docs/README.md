@@ -23,6 +23,8 @@ npm run dev
 - `npm run dev` — start the dev server.
 - `npm run build` — run TypeScript checks and build.
 - `npm run preview` — serve the production build locally.
+- `npm run lint` — lint the codebase.
+- `npm run format` — format the codebase with Prettier.
 
 ## Tech Stack
 
@@ -31,6 +33,13 @@ npm run dev
 - Three.js
 - Tailwind CSS
 - React Three Fiber
+- ESLint + Prettier
+
+## Tooling Updates
+
+- Added ESLint + Prettier to standardize formatting and linting.
+- Updated Vite to the latest major version and aligned Three.js.
+- Added code-splitting and manual vendor chunks to keep bundles tidy.
 
 ## Project Structure
 
