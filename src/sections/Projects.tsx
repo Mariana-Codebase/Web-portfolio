@@ -13,7 +13,7 @@ type GithubProject = {
 
 type LocalProject = {
   t: string;
-  c: 'WEB' | 'MOBILE' | 'BACKEND';
+  c: 'WEB' | 'MOBILE' | 'BACKEND' | 'API';
   u: string;
   d: { es: string; en: string };
   tags?: string[];
@@ -43,12 +43,20 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
 
   const isGithubProject = (project: ProjectItem): project is GithubProject => project.source === 'github';
   const hasGithubData = githubProjects.length > 0;
+  const normalizeKey = (value: string) => value.toLowerCase().replace(/\s+/g, '');
   const languageOverrides = (DATA.githubLanguages ?? {}) as Record<string, string>;
   const categoryOverrides = (DATA.githubCategories ?? {}) as Record<string, string>;
+  const normalizedCategoryOverrides = Object.fromEntries(
+    Object.entries(categoryOverrides).map(([key, value]) => [normalizeKey(key), value])
+  ) as Record<string, string>;
+  const getGithubCategory = (projectName: string) =>
+    normalizedCategoryOverrides[normalizeKey(projectName)];
   const truncateText = (value: string, maxLength: number) => {
     if (value.length <= maxLength) return value;
     return `${value.slice(0, maxLength).trim()}...`;
   };
+  const isCategoryKey = (value: string): value is keyof typeof t.categories =>
+    Object.prototype.hasOwnProperty.call(t.categories, value);
 
   const localProjects = DATA.projects as LocalProject[];
   const filteredProjects = projectFilter === 'ALL'
@@ -57,12 +65,31 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
 
   const githubFiltered = githubProjects.filter((project) => {
     if (projectFilter === 'ALL') return true;
-    const category = categoryOverrides[project.t.toLowerCase()];
+    const category = getGithubCategory(project.t);
     return category === projectFilter;
   });
 
   const projectsToRender: ProjectItem[] = hasGithubData ? githubFiltered : filteredProjects;
-  const filters: Array<keyof typeof t.categories> = ['ALL', 'WEB', 'MOBILE', 'BACKEND'];
+  const categoryOrder: Array<keyof typeof t.categories> = ['WEB', 'MOBILE', 'BACKEND', 'API', 'EDU', 'CERT', 'INTERN'];
+  const activeCategories = new Set<keyof typeof t.categories>();
+
+  if (hasGithubData) {
+    githubProjects.forEach((project) => {
+      const category = getGithubCategory(project.t);
+      if (category && isCategoryKey(category)) {
+        activeCategories.add(category);
+      }
+    });
+  } else {
+    localProjects.forEach((project) => {
+      activeCategories.add(project.c);
+    });
+  }
+
+  const filters: Array<keyof typeof t.categories> = [
+    'ALL',
+    ...categoryOrder.filter((category) => activeCategories.has(category))
+  ];
 
   useEffect(() => {
     if (!hasGithubData || projectFilter === 'ALL') return;
@@ -147,7 +174,7 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
             <div className="text-left">
               <span className="text-[11px] font-black text-blue-600 mb-6 block tracking-[0.2em] uppercase italic">
                 // {isGithubProject(p)
-                  ? (categoryOverrides[p.t.toLowerCase()] || 'GITHUB')
+                  ? (getGithubCategory(p.t) || 'GITHUB')
                   : t.categories[p.c]}
               </span>
               <h3 className="text-4xl font-black italic tracking-tighter uppercase mb-4 leading-none group-hover:text-blue-600 transition-colors">{p.t}</h3>

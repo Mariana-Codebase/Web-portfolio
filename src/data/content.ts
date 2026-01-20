@@ -4,7 +4,7 @@ export type Section = 'home' | 'about' | 'certs' | 'projects';
 
 export interface Project {
   t: string;
-  c: 'WEB' | 'MOBILE' | 'BACKEND';
+  c: 'WEB' | 'API';
   u: string;
   d: { es: string; en: string };
   tags?: string[];
@@ -49,6 +49,7 @@ export interface Content {
     WEB: string;
     MOBILE: string;
     BACKEND: string;
+    API: string;
     EDU: string;
     CERT: string;
     INTERN: string;
@@ -72,9 +73,10 @@ export const DATA = {
   githubLanguages: {
     "web-portfolio": "React / TypeScript / Vite / Tailwind / Three.js"
   } as Record<string, string>,
-  githubCategories: {
-    "web-portfolio": "WEB"
-  } as Record<string, string>,
+    githubCategories: {
+      "web-portfolio": "WEB",
+      "github-api": "API"
+    } as Record<string, string>,
   skills: {
     frontend: ["React", "TypeScript", "TailwindCSS"],
     backend: ["Node.js", "Python", "GraphQL"],
@@ -117,7 +119,7 @@ export const CONTENT: Record<Language, Content> = {
     langTitle: "Idiomas",
     projectsTitle: "Proyectos_",
     certsTitle: "Formación_",
-    categories: { ALL: "TODOS", WEB: "WEB", MOBILE: "MÓVIL", BACKEND: "BACKEND", EDU: "EDUCACIÓN", CERT: "CERTIFICACIONES", INTERN: "PASANTÍAS" },
+    categories: { ALL: "TODOS", WEB: "WEB", MOBILE: "MÓVIL", BACKEND: "BACKEND", API: "API", EDU: "EDUCACIÓN", CERT: "CERTIFICACIONES", INTERN: "PASANTÍAS" },
     status: "ESTADO: ESTABLE",
     designedBy: "Diseñado y creado por",
     tooltips: { github: "GitHub", linkedin: "LinkedIn", mail: "Correo", leetcode: "LeetCode", theme: "Cambiar Tema" }
@@ -138,7 +140,7 @@ export const CONTENT: Record<Language, Content> = {
     langTitle: "Languages",
     projectsTitle: "Projects_",
     certsTitle: "Education_",
-    categories: { ALL: "ALL", WEB: "WEB", MOBILE: "MOBILE", BACKEND: "BACKEND", EDU: "EDUCATION", CERT: "CERTIFICATIONS", INTERN: "INTERNSHIPS" },
+    categories: { ALL: "ALL", WEB: "WEB", MOBILE: "MOBILE", BACKEND: "BACKEND", API: "API", EDU: "EDUCATION", CERT: "CERTIFICATIONS", INTERN: "INTERNSHIPS" },
     status: "STATUS: STABLE",
     designedBy: "Designed and created by",
     tooltips: { github: "GitHub", linkedin: "LinkedIn", mail: "Email", leetcode: "LeetCode", theme: "Switch Theme" }
