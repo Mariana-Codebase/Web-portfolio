@@ -82,7 +82,7 @@ export const DATA = {
   },
   langs: [
     { n: { es: "ESPAÑOL", en: "SPANISH" }, l: { es: "Nativo", en: "Native" } },
-    { n: { es: "INGLÉS", en: "ENGLISH" }, l: { es: "Avanzado", en: "Advanced" } }
+    { n: { es: "INGLÉS", en: "ENGLISH" }, l: { es: "Nativo", en: "Native" } }
   ],
   projects: [],
   certs: [
@@ -138,7 +138,7 @@ export const CONTENT: Record<Language, Content> = {
     langTitle: "Languages",
     projectsTitle: "Projects_",
     certsTitle: "Education_",
-    categories: { ALL: "ALL", WEB: "WEB", MOBILE: "MOBILE", BACKEND: "BACKEND", EDU: "EDUCATION", CERT: "CERTIFICACIONES", INTERN: "INTERNSHIPS" },
+    categories: { ALL: "ALL", WEB: "WEB", MOBILE: "MOBILE", BACKEND: "BACKEND", EDU: "EDUCATION", CERT: "CERTIFICATIONS", INTERN: "INTERNSHIPS" },
     status: "STATUS: STABLE",
     designedBy: "Designed and created by",
     tooltips: { github: "GitHub", linkedin: "LinkedIn", mail: "Email", leetcode: "LeetCode", theme: "Switch Theme" }
