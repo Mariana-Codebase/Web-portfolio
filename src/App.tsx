@@ -42,7 +42,7 @@ const AppContent: React.FC = () => {
       
       <div className={`min-h-screen ${themeColors.bg} ${themeColors.text} transition-colors duration-1000 font-sans selection:bg-blue-600/50 overflow-x-hidden relative ${isLoading ? 'opacity-0' : 'opacity-100 transition-opacity duration-1000'}`}>
         <Suspense fallback={null}>
-          <Scene3D isDarkMode={isDarkMode} />
+        <Scene3D isDarkMode={isDarkMode} />
         </Suspense>
 
       <header className="fixed top-4 md:top-8 w-full px-4 md:px-6 z-[100]">
@@ -114,10 +114,10 @@ const AppContent: React.FC = () => {
 
       <main className="max-w-6xl mx-auto px-6 pt-32 md:pt-40 pb-32 md:pb-24 relative z-10">
         <Suspense fallback={null}>
-          {currentSection === 'home' && <Home themeColors={themeColors} />}
-          {currentSection === 'about' && <Profile themeColors={themeColors} />}
-          {currentSection === 'certs' && <Education themeColors={themeColors} certFilter={certFilter} setCertFilter={setCertFilter} />}
-          {currentSection === 'projects' && <Projects themeColors={themeColors} projectFilter={projectFilter} setProjectFilter={setProjectFilter} />}
+        {currentSection === 'home' && <Home themeColors={themeColors} />}
+        {currentSection === 'about' && <Profile themeColors={themeColors} />}
+        {currentSection === 'certs' && <Education themeColors={themeColors} certFilter={certFilter} setCertFilter={setCertFilter} />}
+        {currentSection === 'projects' && <Projects themeColors={themeColors} projectFilter={projectFilter} setProjectFilter={setProjectFilter} />}
         </Suspense>
       </main>
 

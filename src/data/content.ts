@@ -73,10 +73,10 @@ export const DATA = {
   githubLanguages: {
     "web-portfolio": "React / TypeScript / Vite / Tailwind / Three.js"
   } as Record<string, string>,
-    githubCategories: {
+  githubCategories: {
       "web-portfolio": "WEB",
       "github-api": "API"
-    } as Record<string, string>,
+  } as Record<string, string>,
   skills: {
     frontend: ["React", "TypeScript", "TailwindCSS"],
     backend: ["Node.js", "Python", "GraphQL"],
