@@ -1,10 +1,10 @@
 # Project Documentation
 
-This is the working documentation I keep alongside the portfolio. It focuses on the stuff you’ll actually touch: how the project is organized, how data flows, how to run it locally, and how deployments behave.
+This is the working documentation I keep alongside the portfolio. It focuses on the parts you will actually touch: how the project is organized, how data flows, how to run it locally, and how deployments behave.
 
 ## Overview
 
-The site is a React + TypeScript app built with Vite. It has a 3D background (Three.js), a terminal mode, bilingual content (ES/EN), and a projects section fed by GitHub through a small serverless API. The structure is intentionally content‑first: update the data file and the UI reflects it.
+The site is a React + TypeScript app built with Vite. It has a 3D background (Three.js), a terminal mode, bilingual content (ES/EN), and a projects section fed by GitHub through my own serverless API. The structure is intentionally content‑first: update the data file and the UI reflects it.
 
 Goals:
 - Keep the UI fast and consistent.
@@ -71,9 +71,9 @@ Common edits:
 - **Education/Certs**: `DATA.certs`
 - **Stack labels**: `DATA.skills` + `CONTENT.stackCategories`
 
-## GitHub Projects (API)
+## GitHub Projects (Custom API)
 
-Projects are loaded from a serverless endpoint:
+Projects are loaded from a custom serverless endpoint:
 
 `api/github.ts`
 
@@ -81,6 +81,7 @@ What it does:
 - pulls public repos for a user
 - filters out `fork`, `archived`, and `disabled`
 - supports `?user=` and `?limit=`
+- enriches each repo with language percentages
 - adds cache headers for better performance
 
 ### Environment Variables (Vercel)
@@ -92,16 +93,13 @@ Set these in your Vercel project:
 
 If the API isn’t available locally, the UI falls back to the public GitHub API.
 
-### Manual overrides (tech labels + categories)
+### Manual overrides (categories)
 
-Sometimes GitHub doesn’t return a language (or you want a better label). Use overrides:
+If you want to force a category label for a repo, add a mapping:
 
 ```ts
-DATA.githubLanguages["repo-name"] = "React / TypeScript / Vite"
 DATA.githubCategories["repo-name"] = "WEB"
 ```
-
-If you add a new repo, include it here to control the category label and the tech chips.
 
 ## UI Behavior (What to expect)
 
@@ -129,7 +127,7 @@ If Vercel can’t find `package.json`, set **Root Directory** to `Website`.
 ## Troubleshooting
 
 - **ERR_CONNECTION_REFUSED** — the dev server isn’t running.
-- **GitHub language missing** — add an override in `DATA.githubLanguages`.
+- **GitHub language missing** — the public API can be rate-limited; try again or use the custom API.
 - **Build fails** — run `npm run build` locally to see TypeScript errors.
 
 ## Changelog Tips
