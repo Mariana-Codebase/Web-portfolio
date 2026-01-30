@@ -8,6 +8,7 @@ type GithubProject = {
   t: string;
   description: string;
   language: string;
+  languages?: Record<string, number>;
   u: string;
 };
 
@@ -40,6 +41,7 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
   const { language, isDarkMode } = useApp();
   const t = CONTENT[language];
   const [githubProjects, setGithubProjects] = useState<GithubProject[]>([]);
+  const MIN_LANGUAGE_PERCENT = 1;
 
   const isGithubProject = (project: ProjectItem): project is GithubProject => project.source === 'github';
   const hasGithubData = githubProjects.length > 0;
@@ -57,6 +59,21 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
   };
   const isCategoryKey = (value: string): value is keyof typeof t.categories =>
     Object.prototype.hasOwnProperty.call(t.categories, value);
+  const getLanguageChips = (project: GithubProject) => {
+    const languageEntries = project.languages ? Object.entries(project.languages) : [];
+    const sorted = languageEntries.sort((a, b) => b[1] - a[1]);
+    const filtered = sorted.filter(([, percent]) => percent >= MIN_LANGUAGE_PERCENT);
+
+    if (filtered.length > 0) {
+      return filtered.map(([lang, percent]) => `${lang} ${percent}%`);
+    }
+
+    const fallback = languageOverrides[project.t.toLowerCase()] || project.language || 'Unknown';
+    return fallback
+      .split('/')
+      .map((tech) => tech.trim())
+      .filter(Boolean);
+  };
 
   const localProjects = DATA.projects as LocalProject[];
   const filteredProjects = projectFilter === 'ALL'
@@ -103,12 +120,13 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
     if (!user) return;
 
     let isMounted = true;
-    const mapProjects = (projects: Array<{ name: string; description: string; language: string; url: string }>) => {
+    const mapProjects = (projects: Array<{ name: string; description: string; language: string; url: string; languages?: Record<string, number> }>) => {
       return projects.map((project) => ({
         source: 'github' as const,
         t: project.name,
         description: project.description ?? '',
         language: project.language || 'Unknown',
+        languages: project.languages,
         u: project.url
       }));
     };
@@ -192,11 +210,7 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
                 </span>
                 <div className="flex flex-wrap items-start justify-start gap-2 text-[10px] font-black uppercase tracking-wider w-full">
                   {isGithubProject(p)
-                    ? (languageOverrides[p.t.toLowerCase()] || p.language || 'Unknown')
-                        .split('/')
-                        .map((tech: string) => tech.trim())
-                        .filter(Boolean)
-                        .map((tech: string) => (
+                    ? getLanguageChips(p).map((tech: string) => (
                           <span
                             key={tech}
                             className={`px-3 py-1.5 rounded-full border backdrop-blur-md shadow-sm ${
@@ -207,7 +221,7 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
                           >
                             {tech}
                           </span>
-                        ))
+                      ))
                     : (
                       <span className={`px-3 py-1.5 rounded-full border backdrop-blur-md shadow-sm ${
                         isDarkMode
