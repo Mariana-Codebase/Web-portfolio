@@ -1,4 +1,5 @@
 const DEFAULT_LIMIT = 6;
+const FETCH_TIMEOUT_MS = 8000;
 
 const parseLimit = (value: string | undefined) => {
   const parsed = Number(value);
@@ -14,6 +15,23 @@ const buildGithubUrl = (user: string) => {
   });
 
   return `https://api.github.com/users/${encodeURIComponent(user)}/repos?${params.toString()}`;
+};
+
+const parseProjectTypeFromReadme = (readmeText: string) => {
+  const firstLine = readmeText.split(/\r?\n/, 1)[0]?.trim() ?? "";
+  if (!firstLine.startsWith("//")) return undefined;
+  const tag = firstLine.slice(2).trim();
+  return tag.length > 0 ? tag : undefined;
+};
+
+const calculatePercentages = (langs: Record<string, number>) => {
+  const totalBytes = Object.values(langs).reduce((sum, bytes) => sum + bytes, 0);
+  if (totalBytes === 0) return {};
+  const percentages: Record<string, number> = {};
+  for (const [lang, bytes] of Object.entries(langs)) {
+    percentages[lang] = Math.round((bytes / totalBytes) * 1000) / 10;
+  }
+  return percentages;
 };
 
 export default async function handler(req: any, res: any) {
@@ -67,17 +85,65 @@ export default async function handler(req: any, res: any) {
 
     const filtered = repos
       .filter((repo) => !repo.fork && !repo.archived && !repo.disabled)
-      .slice(0, limit)
-      .map((repo) => ({
-        name: repo.name,
-        description: repo.description ?? "",
-        language: repo.language ?? "Unknown",
-        url: repo.html_url,
-        updatedAt: repo.updated_at
-      }));
+      .slice(0, limit);
+
+    const enriched = await Promise.all(
+      filtered.map(async (repo) => {
+        let repoLanguages: Record<string, number> = {};
+        let projectType: string | undefined;
+
+        try {
+          const langController = new AbortController();
+          const langTimeout = setTimeout(() => langController.abort(), FETCH_TIMEOUT_MS);
+
+          const langResponse = await fetch(
+            `https://api.github.com/repos/${encodeURIComponent(user)}/${encodeURIComponent(repo.name)}/languages`,
+            { headers, signal: langController.signal }
+          );
+          clearTimeout(langTimeout);
+
+          if (langResponse.ok) {
+            repoLanguages = (await langResponse.json()) as Record<string, number>;
+          }
+        } catch {
+          // Ignorar si falla
+        }
+
+        try {
+          const readmeController = new AbortController();
+          const readmeTimeout = setTimeout(() => readmeController.abort(), FETCH_TIMEOUT_MS);
+
+          const readmeResponse = await fetch(
+            `https://api.github.com/repos/${encodeURIComponent(user)}/${encodeURIComponent(repo.name)}/readme`,
+            {
+              headers: { ...headers, Accept: "application/vnd.github.raw+json" },
+              signal: readmeController.signal
+            }
+          );
+          clearTimeout(readmeTimeout);
+
+          if (readmeResponse.ok) {
+            const readmeText = await readmeResponse.text();
+            projectType = parseProjectTypeFromReadme(readmeText);
+          }
+        } catch {
+          // Ignorar si falla
+        }
+
+        return {
+          name: repo.name,
+          description: repo.description ?? "",
+          language: repo.language ?? "Unknown",
+          languages: calculatePercentages(repoLanguages),
+          projectType,
+          url: repo.html_url,
+          updatedAt: repo.updated_at
+        };
+      })
+    );
 
     res.setHeader("Cache-Control", "s-maxage=600, stale-while-revalidate=3600");
-    res.status(200).json({ user, projects: filtered });
+    res.status(200).json({ user, projects: enriched });
   } catch (error) {
     res.status(500).json({ error: "Unexpected server error." });
   }
