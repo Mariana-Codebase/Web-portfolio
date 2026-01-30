@@ -9,6 +9,7 @@ type GithubProject = {
   description: string;
   language: string;
   u: string;
+  category?: string;
 };
 
 type LocalProject = {
@@ -49,14 +50,21 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
   const normalizedCategoryOverrides = Object.fromEntries(
     Object.entries(categoryOverrides).map(([key, value]) => [normalizeKey(key), value])
   ) as Record<string, string>;
-  const getGithubCategory = (projectName: string) =>
-    normalizedCategoryOverrides[normalizeKey(projectName)];
   const truncateText = (value: string, maxLength: number) => {
     if (value.length <= maxLength) return value;
     return `${value.slice(0, maxLength).trim()}...`;
   };
   const isCategoryKey = (value: string): value is keyof typeof t.categories =>
     Object.prototype.hasOwnProperty.call(t.categories, value);
+  const normalizeCategory = (value?: string) => {
+    if (!value) return undefined;
+    const normalized = value.toUpperCase();
+    return isCategoryKey(normalized) ? normalized : undefined;
+  };
+  const getGithubCategory = (project: GithubProject) =>
+    normalizeCategory(project.category) ||
+    normalizeCategory(normalizedCategoryOverrides[normalizeKey(project.t)]) ||
+    'WEB';
 
   const localProjects = DATA.projects as LocalProject[];
   const filteredProjects = projectFilter === 'ALL'
@@ -65,7 +73,7 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
 
   const githubFiltered = githubProjects.filter((project) => {
     if (projectFilter === 'ALL') return true;
-    const category = getGithubCategory(project.t);
+    const category = getGithubCategory(project);
     return category === projectFilter;
   });
 
@@ -75,7 +83,7 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
 
   if (hasGithubData) {
     githubProjects.forEach((project) => {
-      const category = getGithubCategory(project.t);
+      const category = getGithubCategory(project);
       if (category && isCategoryKey(category)) {
         activeCategories.add(category);
       }
@@ -103,13 +111,16 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
     if (!user) return;
 
     let isMounted = true;
-    const mapProjects = (projects: Array<{ name: string; description: string; language: string; url: string }>) => {
+    const mapProjects = (
+      projects: Array<{ name: string; description: string; language: string; url: string; category?: string }>
+    ) => {
       return projects.map((project) => ({
         source: 'github' as const,
         t: project.name,
         description: project.description ?? '',
         language: project.language || 'Unknown',
-        u: project.url
+        u: project.url,
+        category: project.category
       }));
     };
 
@@ -174,7 +185,7 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
             <div className="text-left">
               <span className="text-[11px] font-black text-blue-600 mb-6 block tracking-[0.2em] uppercase italic">
                 // {isGithubProject(p)
-                  ? (getGithubCategory(p.t) || 'GITHUB')
+                  ? (getGithubCategory(p) || 'GITHUB')
                   : t.categories[p.c]}
               </span>
               <h3 className="text-4xl font-black italic tracking-tighter uppercase mb-4 leading-none group-hover:text-blue-600 transition-colors">{p.t}</h3>
