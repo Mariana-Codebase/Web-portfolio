@@ -70,9 +70,7 @@ export const DATA = {
   surname: "SINISTERRA",
   alias: "MARIANA-CODEBASE",
   githubUser: "Mariana-Codebase",
-  githubLanguages: {
-    "web-portfolio": "React / TypeScript / Vite / Tailwind / Three.js"
-  } as Record<string, string>,
+  githubLanguages: {} as Record<string, string>,
   githubCategories: {
       "web-portfolio": "WEB",
       "github-api": "API"

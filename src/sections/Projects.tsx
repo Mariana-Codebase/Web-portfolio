@@ -68,7 +68,6 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
   const isGithubProject = (project: ProjectItem): project is GithubProject => project.source === 'github';
   const hasGithubData = githubProjects.length > 0;
   const normalizeKey = (value: string) => value.toLowerCase().replace(/\s+/g, '');
-  const languageOverrides = (DATA.githubLanguages ?? {}) as Record<string, string>;
   const categoryOverrides = (DATA.githubCategories ?? {}) as Record<string, string>;
   const normalizedCategoryOverrides = Object.fromEntries(
     Object.entries(categoryOverrides).map(([key, value]) => [normalizeKey(key), value])
@@ -89,13 +88,6 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
     normalizeCategory(normalizedCategoryOverrides[normalizeKey(project.t)]) ||
     'WEB';
   const getGithubTechList = (project: GithubProject) => {
-    const override = languageOverrides[project.t.toLowerCase()];
-    if (override) {
-      return override
-        .split('/')
-        .map((tech: string) => tech.trim())
-        .filter(Boolean);
-    }
     if (project.languages && project.languages.length > 0) {
       return project.languages.map(({ name, percentage }) => `${name} ${percentage}%`);
     }
@@ -256,8 +248,8 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
               <h3 className="text-4xl font-black italic tracking-tighter uppercase mb-4 leading-none group-hover:text-blue-600 transition-colors">{p.t}</h3>
               <p className={`${themeColors.textSec} text-base font-medium leading-relaxed mb-4`}>
                 {isGithubProject(p)
-                  ? truncateText(p.description || (language === 'es' ? 'Sin descripción.' : 'No description.'), 120)
-                  : truncateText(p.d[language], 120)}
+                  ? truncateText(p.description || (language === 'es' ? 'Sin descripción.' : 'No description.'), 150)
+                  : truncateText(p.d[language], 150)}
               </p>
 
               <div className="flex flex-col items-start gap-2 text-left mb-4 w-full">
@@ -271,7 +263,7 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
                     ? getGithubTechList(p).map((tech: string) => (
                       <span
                         key={tech}
-                        className={`px-3 py-1.5 rounded-full border backdrop-blur-md shadow-sm ${
+                        className={`rainbow-stack px-3 py-1.5 rounded-full border backdrop-blur-md shadow-sm ${
                           isDarkMode
                             ? 'border-blue-500/30 text-blue-200 bg-blue-500/10'
                             : 'border-blue-600/20 text-blue-700 bg-blue-50'
@@ -281,7 +273,7 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
                       </span>
                     ))
                     : (
-                      <span className={`px-3 py-1.5 rounded-full border backdrop-blur-md shadow-sm ${
+                      <span className={`rainbow-stack px-3 py-1.5 rounded-full border backdrop-blur-md shadow-sm ${
                         isDarkMode
                           ? 'border-blue-500/30 text-blue-200 bg-blue-500/10'
                           : 'border-blue-600/20 text-blue-700 bg-blue-50'
