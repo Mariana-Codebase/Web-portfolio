@@ -258,7 +258,7 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
                 }`}>
                   Tech Stack
                 </span>
-                <div className="flex flex-wrap items-start justify-start gap-2 text-[10px] font-black uppercase tracking-wider w-full">
+                <div className="flex flex-wrap items-start justify-start gap-2 text-[11px] font-black uppercase tracking-wider w-full">
                   {isGithubProject(p)
                     ? getGithubTechList(p).map((tech: string) => (
                       <span
