@@ -3,11 +3,17 @@ import { useApp } from '../context/AppContext';
 import { CONTENT, DATA } from '../data/content';
 import { ArrowUpRight, Star, GitBranch, GitCommit } from 'lucide-react';
 
+type GithubLanguage = {
+  name: string;
+  percentage: number;
+};
+
 type GithubProject = {
   source: 'github';
   t: string;
   description: string;
   language: string;
+  languages?: GithubLanguage[];
   u: string;
   category?: string;
 };
@@ -37,6 +43,23 @@ interface ProjectsProps {
   setProjectFilter: (filter: string) => void;
 }
 
+const MIN_LANGUAGE_PERCENT = 1;
+const computeLanguageBreakdown = (languages: Record<string, number> | null): GithubLanguage[] => {
+  if (!languages) return [];
+  const entries = Object.entries(languages);
+  const total = entries.reduce((sum, [, bytes]) => sum + bytes, 0);
+  if (!total) return [];
+  const withPercent = entries.map(([name, bytes]) => {
+    const rawPercent = (bytes / total) * 100;
+    return { name, rawPercent, percentage: Math.round(rawPercent) };
+  });
+  const filtered = withPercent.filter((item) => item.rawPercent >= MIN_LANGUAGE_PERCENT);
+  const selected = filtered.length > 0 ? filtered : withPercent.slice(0, 1);
+  return selected
+    .sort((a, b) => b.rawPercent - a.rawPercent)
+    .map(({ name, percentage }) => ({ name, percentage }));
+};
+
 export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, setProjectFilter }) => {
   const { language, isDarkMode } = useApp();
   const t = CONTENT[language];
@@ -65,6 +88,19 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
     normalizeCategory(project.category) ||
     normalizeCategory(normalizedCategoryOverrides[normalizeKey(project.t)]) ||
     'WEB';
+  const getGithubTechList = (project: GithubProject) => {
+    const override = languageOverrides[project.t.toLowerCase()];
+    if (override) {
+      return override
+        .split('/')
+        .map((tech: string) => tech.trim())
+        .filter(Boolean);
+    }
+    if (project.languages && project.languages.length > 0) {
+      return project.languages.map(({ name, percentage }) => `${name} ${percentage}%`);
+    }
+    return [project.language || 'Unknown'];
+  };
 
   const localProjects = DATA.projects as LocalProject[];
   const filteredProjects = projectFilter === 'ALL'
@@ -112,13 +148,21 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
 
     let isMounted = true;
     const mapProjects = (
-      projects: Array<{ name: string; description: string; language: string; url: string; category?: string }>
+      projects: Array<{
+        name: string;
+        description: string;
+        language: string;
+        languages?: GithubLanguage[];
+        url: string;
+        category?: string;
+      }>
     ) => {
       return projects.map((project) => ({
         source: 'github' as const,
         t: project.name,
         description: project.description ?? '',
         language: project.language || 'Unknown',
+        languages: project.languages ?? [],
         u: project.url,
         category: project.category
       }));
@@ -138,12 +182,33 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
           if (!response.ok) return;
           const repos = await response.json();
           if (!isMounted || !Array.isArray(repos)) return;
-          const mapped = repos.map((repo: { name: string; description: string | null; language: string | null; html_url: string }) => ({
-            name: repo.name,
-            description: repo.description ?? '',
-            language: repo.language ?? 'Unknown',
-            url: repo.html_url
-          }));
+          const mapped = await Promise.all(
+            repos.map(async (repo: {
+              name: string;
+              description: string | null;
+              language: string | null;
+              html_url: string;
+              languages_url: string;
+            }) => {
+              let languages: GithubLanguage[] = [];
+              try {
+                const langResponse = await fetch(repo.languages_url);
+                if (langResponse.ok) {
+                  const langData = (await langResponse.json()) as Record<string, number>;
+                  languages = computeLanguageBreakdown(langData);
+                }
+              } catch {
+                languages = [];
+              }
+              return {
+                name: repo.name,
+                description: repo.description ?? '',
+                language: repo.language ?? 'Unknown',
+                languages,
+                url: repo.html_url
+              };
+            })
+          );
           setGithubProjects(mapProjects(mapped));
         } catch {
           return;
@@ -203,22 +268,18 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
                 </span>
                 <div className="flex flex-wrap items-start justify-start gap-2 text-[10px] font-black uppercase tracking-wider w-full">
                   {isGithubProject(p)
-                    ? (languageOverrides[p.t.toLowerCase()] || p.language || 'Unknown')
-                        .split('/')
-                        .map((tech: string) => tech.trim())
-                        .filter(Boolean)
-                        .map((tech: string) => (
-                          <span
-                            key={tech}
-                            className={`px-3 py-1.5 rounded-full border backdrop-blur-md shadow-sm ${
-                              isDarkMode
-                                ? 'border-blue-500/30 text-blue-200 bg-blue-500/10'
-                                : 'border-blue-600/20 text-blue-700 bg-blue-50'
-                            }`}
-                          >
-                            {tech}
-                          </span>
-                        ))
+                    ? getGithubTechList(p).map((tech: string) => (
+                      <span
+                        key={tech}
+                        className={`px-3 py-1.5 rounded-full border backdrop-blur-md shadow-sm ${
+                          isDarkMode
+                            ? 'border-blue-500/30 text-blue-200 bg-blue-500/10'
+                            : 'border-blue-600/20 text-blue-700 bg-blue-50'
+                        }`}
+                      >
+                        {tech}
+                      </span>
+                    ))
                     : (
                       <span className={`px-3 py-1.5 rounded-full border backdrop-blur-md shadow-sm ${
                         isDarkMode

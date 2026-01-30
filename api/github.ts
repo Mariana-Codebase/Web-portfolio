@@ -1,4 +1,5 @@
 const DEFAULT_LIMIT = 6;
+const MIN_LANGUAGE_PERCENT = 1;
 
 const parseLimit = (value: string | undefined) => {
   const parsed = Number(value);
@@ -14,6 +15,22 @@ const buildGithubUrl = (user: string) => {
   });
 
   return `https://api.github.com/users/${encodeURIComponent(user)}/repos?${params.toString()}`;
+};
+
+const computeLanguageBreakdown = (languages: Record<string, number> | null) => {
+  if (!languages) return [];
+  const entries = Object.entries(languages);
+  const total = entries.reduce((sum, [, bytes]) => sum + bytes, 0);
+  if (!total) return [];
+  const withPercent = entries.map(([name, bytes]) => {
+    const rawPercent = (bytes / total) * 100;
+    return { name, rawPercent, percentage: Math.round(rawPercent) };
+  });
+  const filtered = withPercent.filter((item) => item.rawPercent >= MIN_LANGUAGE_PERCENT);
+  const selected = filtered.length > 0 ? filtered : withPercent.slice(0, 1);
+  return selected
+    .sort((a, b) => b.rawPercent - a.rawPercent)
+    .map(({ name, percentage }) => ({ name, percentage }));
 };
 
 const extractReadmeCategory = (readme: string | null) => {
@@ -89,6 +106,7 @@ export default async function handler(req: any, res: any) {
       name: string;
       description: string | null;
       language: string | null;
+      languages_url: string;
       html_url: string;
       fork: boolean;
       archived: boolean;
@@ -108,11 +126,22 @@ export default async function handler(req: any, res: any) {
         } catch {
           category = undefined;
         }
+        let languages: Array<{ name: string; percentage: number }> = [];
+        try {
+          const langResponse = await fetch(repo.languages_url, { headers });
+          if (langResponse.ok) {
+            const langData = (await langResponse.json()) as Record<string, number>;
+            languages = computeLanguageBreakdown(langData);
+          }
+        } catch {
+          languages = [];
+        }
 
         return {
           name: repo.name,
           description: repo.description ?? "",
           language: repo.language ?? "Unknown",
+          languages,
           url: repo.html_url,
           updatedAt: repo.updated_at,
           category
