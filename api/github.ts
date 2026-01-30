@@ -16,6 +16,37 @@ const buildGithubUrl = (user: string) => {
   return `https://api.github.com/users/${encodeURIComponent(user)}/repos?${params.toString()}`;
 };
 
+const extractReadmeCategory = (readme: string | null) => {
+  if (!readme) return undefined;
+  const firstLine = readme.split(/\r?\n/)[0]?.trim();
+  if (!firstLine || !firstLine.startsWith("//")) return undefined;
+  const candidate = firstLine.slice(2).trim();
+  if (!candidate) return undefined;
+  const token = candidate.split(/[-–—:|]/)[0]?.trim();
+  if (!token) return undefined;
+  return token.toUpperCase();
+};
+
+const fetchReadmeCategory = async (
+  user: string,
+  repo: string,
+  headers: Record<string, string>
+) => {
+  const response = await fetch(
+    `https://api.github.com/repos/${encodeURIComponent(user)}/${encodeURIComponent(repo)}/readme`,
+    {
+      headers: {
+        ...headers,
+        Accept: "application/vnd.github.raw"
+      }
+    }
+  );
+
+  if (!response.ok) return undefined;
+  const text = await response.text();
+  return extractReadmeCategory(text);
+};
+
 export default async function handler(req: any, res: any) {
   const user =
     typeof req.query?.user === "string"
@@ -65,16 +96,29 @@ export default async function handler(req: any, res: any) {
       updated_at: string;
     }>;
 
-    const filtered = repos
+    const filteredRepos = repos
       .filter((repo) => !repo.fork && !repo.archived && !repo.disabled)
-      .slice(0, limit)
-      .map((repo) => ({
-        name: repo.name,
-        description: repo.description ?? "",
-        language: repo.language ?? "Unknown",
-        url: repo.html_url,
-        updatedAt: repo.updated_at
-      }));
+      .slice(0, limit);
+
+    const filtered = await Promise.all(
+      filteredRepos.map(async (repo) => {
+        let category: string | undefined;
+        try {
+          category = await fetchReadmeCategory(user, repo.name, headers);
+        } catch {
+          category = undefined;
+        }
+
+        return {
+          name: repo.name,
+          description: repo.description ?? "",
+          language: repo.language ?? "Unknown",
+          url: repo.html_url,
+          updatedAt: repo.updated_at,
+          category
+        };
+      })
+    );
 
     res.setHeader("Cache-Control", "s-maxage=600, stale-while-revalidate=3600");
     res.status(200).json({ user, projects: filtered });

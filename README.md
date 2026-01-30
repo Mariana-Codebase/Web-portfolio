@@ -37,6 +37,16 @@ npm run dev
 
 Full documentation lives in `docs/README.md`.
 
+## GitHub Category Marker
+
+Add a category marker in the README to classify GitHub projects:
+
+```
+//WEB
+```
+
+The marker must be on the first line, start with `//`, and the value after `//` is used as the category.
+
 
 ## ⚖️ License
 
