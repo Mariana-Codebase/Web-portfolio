@@ -1,3 +1,5 @@
+//WEB
+
 # Mariana Dev - Portfolio
 
 Neo‑Brutalist minimalist portfolio with a 3D background, terminal mode, bilingual content, and GitHub‑synced projects.
