@@ -139,6 +139,7 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
   const [contributions, setContributions] = useState<Contribution[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const blockedUsers = new Set(['greptilea']);
+  const since = DATA.contributionsSince;
 
   useEffect(() => {
     const user = DATA.githubUser;
@@ -146,8 +147,9 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
     let isMounted = true;
 
     const fetchFromApi = async (includeRefs: boolean) => {
+      const sinceParam = since ? `&since=${encodeURIComponent(since)}` : '';
       const response = await fetch(
-        `/api/contributions?user=${encodeURIComponent(user)}&limit=6&includeRefs=${includeRefs ? '1' : '0'}`
+        `/api/contributions?user=${encodeURIComponent(user)}&limit=6&includeRefs=${includeRefs ? '1' : '0'}${sinceParam}`
       );
       if (!response.ok) throw new Error('api_error');
       const data = await response.json();
@@ -173,8 +175,9 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
       if (token) {
         headers.Authorization = `Bearer ${token}`;
       }
+      const sinceQuery = since ? `+created:>=${encodeURIComponent(since)}` : '';
       const response = await fetch(
-        `https://api.github.com/search/issues?q=author:${encodeURIComponent(user)}+is:pr+sort:updated-desc&per_page=12`,
+        `https://api.github.com/search/issues?q=author:${encodeURIComponent(user)}+is:pr${sinceQuery}+sort:updated-desc&per_page=12`,
         { headers }
       );
       if (!response.ok) {
