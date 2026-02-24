@@ -72,6 +72,7 @@ export const DATA = {
   surname: "SINISTERRA",
   alias: "MARIANA-CODEBASE",
   githubUser: "Mariana-Codebase",
+  contributionsSince: "2025-01-01",
   githubLanguages: {} as Record<string, string>,
   githubCategories: {
       "web-portfolio": "WEB",

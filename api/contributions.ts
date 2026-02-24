@@ -15,9 +15,17 @@ const parseIncludeRefs = (value: string | undefined) => {
   return normalized !== "0" && normalized !== "false";
 };
 
-const buildSearchUrl = (user: string, perPage: number) => {
+const parseSince = (value: string | undefined) => {
+  if (!value) return undefined;
+  const normalized = value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return undefined;
+  return normalized;
+};
+
+const buildSearchUrl = (user: string, perPage: number, since?: string) => {
+  const sinceFilter = since ? ` created:>=${since}` : "";
   const params = new URLSearchParams({
-    q: `author:${user} is:pr sort:updated-desc`,
+    q: `author:${user} is:pr${sinceFilter} sort:updated-desc`,
     per_page: String(perPage)
   });
 
@@ -165,6 +173,9 @@ export default async function handler(req: any, res: any) {
   const includeRefs = parseIncludeRefs(
     typeof req.query?.includeRefs === "string" ? req.query.includeRefs : undefined
   );
+  const since = parseSince(
+    typeof req.query?.since === "string" ? req.query.since : undefined
+  );
 
   if (!user) {
     res.status(400).json({ error: "Missing GitHub user." });
@@ -184,7 +195,7 @@ export default async function handler(req: any, res: any) {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const cacheKey = `${user}:${limit}:${includeRefs ? "refs" : "norefs"}`;
+  const cacheKey = `${user}:${limit}:${includeRefs ? "refs" : "norefs"}:${since ?? "all"}`;
   const now = Date.now();
   const cached = responseCache.get(cacheKey);
   if (cached && cached.expiresAt > now) {
@@ -194,7 +205,7 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const searchResponse = await fetch(buildSearchUrl(user, 50), { headers });
+    const searchResponse = await fetch(buildSearchUrl(user, 50, since), { headers });
     if (!searchResponse.ok) {
       const message = await searchResponse.text();
       res.status(searchResponse.status).json({ error: message || "GitHub API error" });
