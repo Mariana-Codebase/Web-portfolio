@@ -1,6 +1,6 @@
 export type Language = 'es' | 'en';
 export type Theme = 'dark' | 'light';
-export type Section = 'home' | 'about' | 'certs' | 'projects';
+export type Section = 'home' | 'about' | 'certs' | 'projects' | 'contributions';
 
 export interface Project {
   t: string;
@@ -31,6 +31,7 @@ export interface Content {
     about: string;
     certs: string;
     projects: string;
+    contributions: string;
   };
   profileTitle: string;
   profileSlogan: string;
@@ -43,6 +44,7 @@ export interface Content {
   };
   langTitle: string;
   projectsTitle: string;
+  contributionsTitle: string;
   certsTitle: string;
   categories: {
     ALL: string;
@@ -104,7 +106,7 @@ export const CONTENT: Record<Language, Content> = {
   es: {
     role: "Estudiante de Ingeniería Informática",
     bio: "Estudiante de Ingeniería Informática. Actualmente exploro la intersección entre el código y la infraestructura, utilizando Python para crear herramientas que hagan los procesos más ágiles y seguros. En constante evolución técnica.",
-    nav: { home: "INICIO", about: "PERFIL", certs: "FORMACIÓN", projects: "PROYECTOS" },
+    nav: { home: "INICIO", about: "PERFIL", certs: "FORMACIÓN", projects: "PROYECTOS", contributions: "CONTRIBUCIONES" },
     profileTitle: "/ Perfil Profesional",
     profileSlogan: "Ingeniería aplicada a sistemas reales.",
     profileDesc: "Como estudiante de Ingeniería Informática, me enfoco en redes, ciberseguridad e infraestructura. Me interesa construir soluciones prácticas y seguras, apoyándome en Python para automatizar procesos y mejorar la operación técnica.",
@@ -116,6 +118,7 @@ export const CONTENT: Record<Language, Content> = {
     },
     langTitle: "Idiomas",
     projectsTitle: "Proyectos_",
+    contributionsTitle: "Contribuciones_",
     certsTitle: "Formación_",
     categories: { ALL: "TODOS", WEB: "WEB", MOBILE: "MÓVIL", BACKEND: "BACKEND", API: "API", EDU: "EDUCACIÓN", CERT: "CERTIFICACIONES", INTERN: "PASANTÍAS" },
     status: "ESTADO: ESTABLE",
@@ -125,7 +128,7 @@ export const CONTENT: Record<Language, Content> = {
   en: {
     role: "Computer Engineering Student",
     bio: "Computer Engineering student. Currently exploring the intersection between code and infrastructure, using Python to create tools that make processes more agile and secure. In constant technical evolution.",
-    nav: { home: "HOME", about: "PROFILE", certs: "EDUCATION", projects: "PROJECTS" },
+    nav: { home: "HOME", about: "PROFILE", certs: "EDUCATION", projects: "PROJECTS", contributions: "CONTRIBUTIONS" },
     profileTitle: "/ Professional Profile",
     profileSlogan: "Engineering for real systems.",
     profileDesc: "As a Computer Engineering student, I focus on networks, cybersecurity, and infrastructure. I enjoy building practical, secure solutions and use Python to automate processes and improve technical operations.",
@@ -137,6 +140,7 @@ export const CONTENT: Record<Language, Content> = {
     },
     langTitle: "Languages",
     projectsTitle: "Projects_",
+    contributionsTitle: "Contributions_",
     certsTitle: "Education_",
     categories: { ALL: "ALL", WEB: "WEB", MOBILE: "MOBILE", BACKEND: "BACKEND", API: "API", EDU: "EDUCATION", CERT: "CERTIFICATIONS", INTERN: "INTERNSHIPS" },
     status: "STATUS: STABLE",

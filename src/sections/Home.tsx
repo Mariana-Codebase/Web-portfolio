@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { CONTENT, DATA } from '../data/content';
-import { Github, Linkedin, Mail } from 'lucide-react';
+import { Github, Linkedin, Mail, Copy } from 'lucide-react';
 import { LeetCodeIcon } from '../components/LeetCodeIcon';
 
 interface HomeProps {
@@ -16,6 +16,9 @@ interface HomeProps {
 export const Home: React.FC<HomeProps> = ({ themeColors }) => {
   const { language, isDarkMode } = useApp();
   const t = CONTENT[language];
+  const [isEmailOpen, setIsEmailOpen] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+  const email = "mariana.data@outlook.com";
 
   return (
     <div className="animate-in fade-in zoom-in-95 duration-700">
@@ -70,6 +73,12 @@ export const Home: React.FC<HomeProps> = ({ themeColors }) => {
             <a 
               key={social.id} 
               href={social.href} 
+              onClick={(event) => {
+                if (social.id === 'mail') {
+                  event.preventDefault();
+                  setIsEmailOpen(true);
+                }
+              }}
               className={`group relative p-3 sm:p-4 ${themeColors.socialBtn} ${social.hoverColor} rounded-2xl transition-all duration-300 block border ${themeColors.cardBorder}`}
             >
               <span className="inline-flex scale-[0.8] sm:scale-100">
@@ -96,6 +105,75 @@ export const Home: React.FC<HomeProps> = ({ themeColors }) => {
           ))}
         </div>
       </div>
+      {isEmailOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          <div
+            className={`absolute inset-0 ${isDarkMode ? 'bg-black/80' : 'bg-stone-900/80'}`}
+            onClick={() => setIsEmailOpen(false)}
+          />
+          <div
+            className={`relative w-full max-w-md rounded-3xl border p-6 sm:p-8 ${
+              isDarkMode ? 'bg-[#0b0b0b] border-white/10 text-white' : 'bg-white border-stone-200 text-stone-900'
+            }`}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-black uppercase tracking-[0.2em]">
+                {language === 'es' ? 'Correo' : 'Email'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsEmailOpen(false)}
+                className={`text-xs font-black uppercase tracking-widest ${
+                  isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-stone-500 hover:text-stone-900'
+                }`}
+              >
+                {language === 'es' ? 'Cerrar' : 'Close'}
+              </button>
+            </div>
+            <div className={`rounded-2xl border px-4 py-3 text-sm font-semibold flex items-center justify-between gap-3 ${
+              isDarkMode ? 'border-white/10 bg-white/5' : 'border-stone-200 bg-stone-50'
+            }`}>
+              <span className="break-all">{email}</span>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(email);
+                    setIsCopied(true);
+                    setTimeout(() => setIsCopied(false), 1500);
+                  } catch {
+                    setIsCopied(false);
+                  }
+                }}
+                className={`inline-flex items-center justify-center rounded-xl p-2 transition-colors ${
+                  isDarkMode ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-stone-900 text-white hover:bg-stone-800'
+                }`}
+                aria-label={language === 'es' ? 'Copiar correo' : 'Copy email'}
+                title={language === 'es' ? 'Copiar' : 'Copy'}
+              >
+                <Copy size={16} />
+              </button>
+            </div>
+            <div className="mt-6 space-y-3">
+              {isCopied && (
+                <div className={`text-xs font-black uppercase tracking-[0.2em] text-center ${
+                  isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
+                }`}>
+                  {language === 'es' ? 'Copiado' : 'Copied'}
+                </div>
+              )}
+              <a
+                href={`mailto:${email}`}
+                className={`inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 text-xs font-black uppercase tracking-[0.2em] transition-colors ${
+                  isDarkMode ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-blue-600 text-white hover:bg-blue-500'
+                }`}
+              >
+                {language === 'es' ? 'Enviar correo' : 'Send email'}
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
