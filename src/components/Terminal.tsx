@@ -17,11 +17,12 @@ export const Terminal: React.FC<TerminalProps> = ({ isOpen, onClose, onNavigate,
   const inputRef = useRef<HTMLInputElement>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
 
-  const helpMessage = `Available commands:
+const helpMessage = `Available commands:
   help          - Show this help message
   clear         - Clear terminal
   me            - Navigate to profile section
   p             - Navigate to projects section
+  c             - Navigate to contributions section
   ed            - Navigate to education section
   h             - Navigate to home section
   es/en         - Quick language change (e.g., 'español' or 'english')
@@ -43,6 +44,10 @@ export const Terminal: React.FC<TerminalProps> = ({ isOpen, onClose, onNavigate,
       onNavigate('projects');
       return 'Navigating to projects section...';
     },
+    c: () => {
+      onNavigate('contributions');
+      return 'Navigating to contributions section...';
+    },
     ed: () => {
       onNavigate('certs');
       return 'Navigating to education section...';
@@ -58,6 +63,10 @@ export const Terminal: React.FC<TerminalProps> = ({ isOpen, onClose, onNavigate,
     projects: () => {
       onNavigate('projects');
       return 'Navigating to projects section...';
+    },
+    contributions: () => {
+      onNavigate('contributions');
+      return 'Navigating to contributions section...';
     },
     education: () => {
       onNavigate('certs');

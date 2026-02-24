@@ -12,6 +12,7 @@ const Home = lazy(() => import('./sections/Home').then((m) => ({ default: m.Home
 const Profile = lazy(() => import('./sections/Profile').then((m) => ({ default: m.Profile })));
 const Education = lazy(() => import('./sections/Education').then((m) => ({ default: m.Education })));
 const Projects = lazy(() => import('./sections/Projects').then((m) => ({ default: m.Projects })));
+const Contributions = lazy(() => import('./sections/Contributions').then((m) => ({ default: m.Contributions })));
 
 const AppContent: React.FC = () => {
   const { language, isDarkMode, currentSection, setCurrentSection, setTheme, setLanguage, projectFilter, setProjectFilter, certFilter, setCertFilter, isTerminalOpen, setIsTerminalOpen } = useApp();
@@ -118,6 +119,7 @@ const AppContent: React.FC = () => {
         {currentSection === 'about' && <Profile themeColors={themeColors} />}
         {currentSection === 'certs' && <Education themeColors={themeColors} certFilter={certFilter} setCertFilter={setCertFilter} />}
         {currentSection === 'projects' && <Projects themeColors={themeColors} projectFilter={projectFilter} setProjectFilter={setProjectFilter} />}
+        {currentSection === 'contributions' && <Contributions themeColors={themeColors} />}
         </Suspense>
       </main>
 

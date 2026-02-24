@@ -174,14 +174,21 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
           if (!response.ok) return;
           const repos = await response.json();
           if (!isMounted || !Array.isArray(repos)) return;
+          const ownRepos = (repos as Array<{
+            name: string;
+            description: string | null;
+            language: string | null;
+            html_url: string;
+            languages_url: string;
+            fork?: boolean;
+            owner?: { login?: string };
+          }>).filter((repo) => {
+            const ownerLogin = repo.owner?.login?.toLowerCase();
+            return ownerLogin === user.toLowerCase() && !repo.fork;
+          });
+
           const mapped = await Promise.all(
-            repos.map(async (repo: {
-              name: string;
-              description: string | null;
-              language: string | null;
-              html_url: string;
-              languages_url: string;
-            }) => {
+            ownRepos.map(async (repo) => {
               let languages: GithubLanguage[] = [];
               try {
                 const langResponse = await fetch(repo.languages_url);
