@@ -14,6 +14,9 @@ type Contribution = {
   references?: Array<{ url: string; reference: string; author: string; event: string }>;
 };
 
+const CONTRIBUTIONS_LIMIT = 6;
+const SEARCH_PAGE_SIZE = 12;
+
 interface ContributionsProps {
   themeColors: {
     cardBg: string;
@@ -52,10 +55,132 @@ const parseOwnerRepoFromUrl = (url: string) => {
   return { owner: match[1], repo: match[2] };
 };
 
+const normalizeGithubHtmlUrl = (url: string, fallbackOwner: string, fallbackRepo: string, issueNumber: number) => {
+  if (url.includes('github.com/') && !url.includes('api.github.com')) {
+    return url;
+  }
+  const apiMatch = url.match(/api\.github\.com\/repos\/([^/]+)\/([^/]+)\/issues\/(\d+)/);
+  if (apiMatch) {
+    return `https://github.com/${apiMatch[1]}/${apiMatch[2]}/issues/${apiMatch[3]}`;
+  }
+  return `https://github.com/${fallbackOwner}/${fallbackRepo}/pull/${issueNumber}`;
+};
+
 const buildCommitHtmlUrl = (commitUrl: string) => {
   const match = commitUrl.match(/repos\/([^/]+)\/([^/]+)\/commits\/([a-f0-9]+)/i);
   if (!match) return null;
   return `https://github.com/${match[1]}/${match[2]}/commit/${match[3]}`;
+};
+
+const buildFallbackPrUrl = (owner: string, repo: string, issueNumber: number) =>
+  `https://github.com/${owner}/${repo}/pull/${issueNumber}`;
+
+const fetchSearchMentions = async (
+  owner: string,
+  repo: string,
+  issueNumber: number,
+  headers: Record<string, string>
+) => {
+  const query = `repo:${owner}/${repo} is:pr \"${owner}/${repo}#${issueNumber}\"`;
+  const url = `https://api.github.com/search/issues?q=${encodeURIComponent(query)}&per_page=50`;
+  const response = await fetch(url, { headers });
+  if (!response.ok) return [];
+  const data = await response.json();
+  return (data.items ?? []).map((item: { html_url: string; user?: { login?: string } }) => ({
+    url: item.html_url,
+    reference: `${owner}/${repo}`,
+    author: item.user?.login ?? 'unknown',
+    event: 'mentioned'
+  }));
+};
+
+const fetchGraphqlReferences = async (
+  owner: string,
+  repo: string,
+  issueNumber: number,
+  headers: Record<string, string>
+) => {
+  const graphqlUrl = 'https://api.github.com/graphql';
+  const query = `
+    query($owner:String!, $repo:String!, $number:Int!, $after:String) {
+      repository(owner:$owner, name:$repo) {
+        pullRequest(number:$number) {
+          timelineItems(first:100, after:$after, itemTypes:[CROSS_REFERENCED_EVENT, REFERENCED_EVENT, MENTIONED_EVENT]) {
+            pageInfo { hasNextPage endCursor }
+            nodes {
+              __typename
+              ... on CrossReferencedEvent {
+                actor { login }
+                source {
+                  __typename
+                  ... on PullRequest { url author { login } }
+                  ... on Issue { url author { login } }
+                }
+                createdAt
+              }
+              ... on ReferencedEvent {
+                actor { login }
+                commitUrl
+                createdAt
+              }
+              ... on MentionedEvent {
+                actor { login }
+                createdAt
+              }
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  const references: Array<{ url: string; reference: string; author: string; event: string }> = [];
+  let after: string | null = null;
+
+  while (true) {
+    const response = await fetch(graphqlUrl, {
+      method: 'POST',
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        query,
+        variables: { owner, repo, number: issueNumber, after }
+      })
+    });
+
+    if (!response.ok) break;
+    const payload = await response.json();
+    const timeline = payload?.data?.repository?.pullRequest?.timelineItems;
+    const nodes = timeline?.nodes ?? [];
+
+    for (const node of nodes) {
+      if (node.__typename === 'CrossReferencedEvent') {
+        const author = node?.source?.author?.login ?? node?.actor?.login ?? 'unknown';
+        const url = node?.source?.url ?? buildFallbackPrUrl(owner, repo, issueNumber);
+        references.push({ url, reference: `${owner}/${repo}`, author, event: 'mentioned' });
+      } else if (node.__typename === 'ReferencedEvent') {
+        const author = node?.actor?.login ?? 'unknown';
+        const url = node?.commitUrl ?? buildFallbackPrUrl(owner, repo, issueNumber);
+        references.push({ url, reference: `${owner}/${repo}`, author, event: 'referenced' });
+      } else if (node.__typename === 'MentionedEvent') {
+        const author = node?.actor?.login ?? 'unknown';
+        const url = buildFallbackPrUrl(owner, repo, issueNumber);
+        references.push({ url, reference: `${owner}/${repo}`, author, event: 'mentioned' });
+      }
+    }
+
+    if (!timeline?.pageInfo?.hasNextPage) break;
+    after = timeline.pageInfo.endCursor;
+  }
+
+  try {
+    const searchRefs = await fetchSearchMentions(owner, repo, issueNumber, headers);
+    return references.concat(searchRefs);
+  } catch {
+    return references;
+  }
 };
 
 const normalizeReferenceEvent = (event: string) => {
@@ -64,6 +189,11 @@ const normalizeReferenceEvent = (event: string) => {
   return 'referenced';
 };
 
+const getRateLimitMessage = (language: 'es' | 'en') =>
+  language === 'es'
+    ? 'Límite de la API de GitHub excedido. Usa un token para aumentar el límite.'
+    : 'GitHub API rate limit exceeded. Use a token to increase the limit.';
+
 const fetchTimelineReferences = async (
   owner: string,
   repo: string,
@@ -71,7 +201,6 @@ const fetchTimelineReferences = async (
   headers: Record<string, string>
 ): Promise<Array<{ url: string; reference: string; author: string; event: string }>> => {
   const references: Array<{ url: string; reference: string; author: string; event: string }> = [];
-  const seen = new Set<string>();
   let page = 1;
   const perPage = 100;
 
@@ -85,44 +214,55 @@ const fetchTimelineReferences = async (
     if (!Array.isArray(timeline) || timeline.length === 0) break;
 
     for (const entry of timeline) {
-      const actor = entry.actor?.login ?? 'unknown';
-      if (entry.event === 'cross-referenced' && entry.source?.issue?.html_url) {
-        const issue = entry.source.issue;
-        const issueUrl = issue.html_url as string;
-        const repoInfo = parseOwnerRepoFromUrl(issueUrl);
-        const ref = repoInfo ? `${repoInfo.owner}/${repoInfo.repo}#${issue.number}` : `#${issue.number}`;
+      let actor =
+        entry.actor?.login ??
+        entry.user?.login ??
+        entry.source?.issue?.user?.login ??
+        'unknown';
+      if (actor === 'unknown' && entry.event === 'mentioned' && entry.url) {
+        try {
+          const mentionResponse = await fetch(entry.url, { headers });
+          if (mentionResponse.ok) {
+            const mentionData = await mentionResponse.json();
+            actor = mentionData?.user?.login ?? actor;
+          }
+        } catch {
+          actor = actor;
+        }
+      }
+      if (entry.event === 'cross-referenced') {
+        const issue = entry.source?.issue;
+        const issueUrl = issue?.html_url as string | undefined;
+        const repoInfo = issueUrl ? parseOwnerRepoFromUrl(issueUrl) : null;
+        const fallbackUrl = buildFallbackPrUrl(owner, repo, issueNumber);
+        const ref = repoInfo ? `${repoInfo.owner}/${repoInfo.repo}#${issue?.number}` : `${owner}/${repo}#${issueNumber}`;
         const event = normalizeReferenceEvent('cross-referenced');
-        const key = `${issueUrl}|${actor}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          references.push({ url: issueUrl, reference: ref, author: actor, event });
-        }
+        references.push({ url: issueUrl ?? fallbackUrl, reference: ref, author: actor, event });
         continue;
       }
 
-      if (entry.event === 'referenced' && entry.commit_url && entry.commit_id) {
-        const commitUrl = buildCommitHtmlUrl(entry.commit_url) ?? entry.commit_url;
-        const repoInfo = parseOwnerRepoFromUrl(commitUrl) ?? { owner, repo };
-        const ref = `${repoInfo.owner}/${repoInfo.repo}@${String(entry.commit_id).slice(0, 7)}`;
+      if (entry.event === 'referenced') {
+        const commitUrl = entry.commit_url
+          ? buildCommitHtmlUrl(entry.commit_url) ?? entry.commit_url
+          : undefined;
+        const repoInfo = commitUrl ? parseOwnerRepoFromUrl(commitUrl) ?? { owner, repo } : { owner, repo };
+        const ref = entry.commit_id
+          ? `${repoInfo.owner}/${repoInfo.repo}@${String(entry.commit_id).slice(0, 7)}`
+          : `${owner}/${repo}#${issueNumber}`;
         const event = normalizeReferenceEvent('referenced');
-        const key = `${commitUrl}|${actor}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          references.push({ url: commitUrl, reference: ref, author: actor, event });
-        }
+        references.push({ url: commitUrl ?? buildFallbackPrUrl(owner, repo, issueNumber), reference: ref, author: actor, event });
         continue;
       }
 
-      if (entry.event === 'mentioned' && entry.url) {
-        const mentionUrl = entry.url as string;
+      if (entry.event === 'mentioned') {
+        const rawUrl =
+          (entry.url as string | undefined) ||
+          `https://github.com/${owner}/${repo}/pull/${issueNumber}`;
+        const mentionUrl = normalizeGithubHtmlUrl(rawUrl, owner, repo, issueNumber);
         const repoInfo = parseOwnerRepoFromUrl(mentionUrl) ?? { owner, repo };
         const ref = `${repoInfo.owner}/${repoInfo.repo}`;
         const event = normalizeReferenceEvent('mentioned');
-        const key = `${mentionUrl}|${actor}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          references.push({ url: mentionUrl, reference: ref, author: actor, event });
-        }
+        references.push({ url: mentionUrl, reference: ref, author: actor, event });
       }
     }
 
@@ -130,7 +270,12 @@ const fetchTimelineReferences = async (
     page += 1;
   }
 
-  return references;
+  try {
+    const graphqlRefs = await fetchGraphqlReferences(owner, repo, issueNumber, headers);
+    return references.concat(graphqlRefs);
+  } catch {
+    return references;
+  }
 };
 
 export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => {
@@ -138,7 +283,6 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
   const t = CONTENT[language];
   const [contributions, setContributions] = useState<Contribution[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const blockedUsers = new Set(['greptilea']);
   const since = DATA.contributionsSince;
 
   useEffect(() => {
@@ -148,17 +292,15 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
 
     const fetchFromApi = async (includeRefs: boolean) => {
       const sinceParam = since ? `&since=${encodeURIComponent(since)}` : '';
+      const freshParam = includeRefs ? '&fresh=1' : '';
       const response = await fetch(
-        `/api/contributions?user=${encodeURIComponent(user)}&limit=6&includeRefs=${includeRefs ? '1' : '0'}${sinceParam}`
+        `/api/contributions?user=${encodeURIComponent(user)}&limit=${CONTRIBUTIONS_LIMIT}&includeRefs=${includeRefs ? '1' : '0'}${sinceParam}${freshParam}`
       );
       if (!response.ok) throw new Error('api_error');
       const data = await response.json();
       const rateLimitMessage = data?.message || data?.error;
       if (rateLimitMessage?.includes('API rate limit exceeded')) {
-        setErrorMessage(language === 'es'
-          ? 'Límite de la API de GitHub excedido. Usa un token para aumentar el límite.'
-          : 'GitHub API rate limit exceeded. Use a token to increase the limit.'
-        );
+        setErrorMessage(getRateLimitMessage(language));
       } else {
         setErrorMessage(null);
       }
@@ -177,26 +319,20 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
       }
       const sinceQuery = since ? `+created:>=${encodeURIComponent(since)}` : '';
       const response = await fetch(
-        `https://api.github.com/search/issues?q=author:${encodeURIComponent(user)}+is:pr${sinceQuery}+sort:updated-desc&per_page=12`,
+        `https://api.github.com/search/issues?q=author:${encodeURIComponent(user)}+is:pr${sinceQuery}+sort:updated-desc&per_page=${SEARCH_PAGE_SIZE}`,
         { headers }
       );
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         if (data?.message?.includes('API rate limit exceeded')) {
-          setErrorMessage(language === 'es'
-            ? 'Límite de la API de GitHub excedido. Usa un token para aumentar el límite.'
-            : 'GitHub API rate limit exceeded. Use a token to increase the limit.'
-          );
+          setErrorMessage(getRateLimitMessage(language));
         }
         return;
       }
       const data = await response.json();
       const rateLimitMessage = data?.message || data?.error;
       if (rateLimitMessage?.includes('API rate limit exceeded')) {
-        setErrorMessage(language === 'es'
-          ? 'Límite de la API de GitHub excedido. Usa un token para aumentar el límite.'
-          : 'GitHub API rate limit exceeded. Use a token to increase the limit.'
-        );
+        setErrorMessage(getRateLimitMessage(language));
       } else {
         setErrorMessage(null);
       }
@@ -205,7 +341,7 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
       const repoCache = new Map<string, { name: string; fullName: string; stars: number; owner: string }>();
 
       for (const item of items) {
-        if (result.length >= 6) break;
+        if (result.length >= CONTRIBUTIONS_LIMIT) break;
         if (!item.pull_request?.url) continue;
         let status: Contribution['status'] | null = null;
         if (item.state === 'open') {
@@ -333,6 +469,16 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
             key={`${item.reference}-${index}`}
             className={`group ${themeColors.cardBg} border ${themeColors.cardBorder} p-5 md:p-6 rounded-[2.5rem] hover:border-blue-600 transition-all duration-500 flex flex-col justify-between w-full`}
           >
+            {(() => {
+              const mentionedRefs = (item.references ?? []).filter((ref) => ref.event === 'mentioned');
+              const referencedRefs = (item.references ?? []).filter((ref) => ref.event === 'referenced');
+              const botNames = new Set(['greptile', 'greptile-apps', 'greptileai']);
+              const isBot = (author: string) => {
+                const lower = author.toLowerCase();
+                return lower.includes('bot') || botNames.has(lower);
+              };
+
+              return (
             <div className="md:grid md:grid-cols-[220px_1fr] lg:grid-cols-[250px_1fr] md:gap-6">
               <div>
                 <div className="flex items-center justify-between mb-3">
@@ -366,7 +512,7 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                 )}
               </div>
 
-              {item.references && item.references.length > 0 && (
+              {(referencedRefs.length > 0 || mentionedRefs.length > 0) && (
                 <div className="mb-2">
                   <div className="p-0">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -377,20 +523,24 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                           Referenced by
                         </div>
                         <div className="space-y-2">
-                          {item.references
-                            .filter((ref) => !blockedUsers.has(ref.author.toLowerCase()))
-                            .filter((ref) => ref.event === 'referenced')
-                            .map((ref) => (
+                          {referencedRefs.map((ref, idx) => (
                               <a
-                                key={ref.url}
+                                key={`${ref.url}-${ref.author}-${ref.event}-${idx}`}
                                 href={ref.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className={`block text-sm font-semibold underline-offset-4 hover:underline ${
+                                className={`block text-sm font-semibold underline-offset-4 hover:underline truncate ${
                                   isDarkMode ? 'text-neutral-100' : 'text-stone-800'
                                 } break-words leading-relaxed`}
                               >
                                 @{ref.author}
+                                {isBot(ref.author) && (
+                                  <span className={`ml-2 text-[9px] font-black uppercase tracking-widest ${
+                                    isDarkMode ? 'text-emerald-300' : 'text-emerald-600'
+                                  }`}>
+                                    BOT
+                                  </span>
+                                )}
                               </a>
                             ))}
                         </div>
@@ -402,20 +552,24 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                           Mentioned by
                         </div>
                         <div className="space-y-2">
-                          {item.references
-                            .filter((ref) => !blockedUsers.has(ref.author.toLowerCase()))
-                            .filter((ref) => ref.event === 'mentioned')
-                            .map((ref) => (
+                          {mentionedRefs.map((ref, idx) => (
                               <a
-                                key={ref.url}
+                                key={`${ref.url}-${ref.author}-${ref.event}-${idx}`}
                                 href={ref.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className={`block text-sm font-semibold underline-offset-4 hover:underline ${
+                                className={`block text-sm font-semibold underline-offset-4 hover:underline truncate ${
                                   isDarkMode ? 'text-neutral-100' : 'text-stone-800'
                                 } break-words leading-relaxed`}
                               >
                                 @{ref.author}
+                                {isBot(ref.author) && (
+                                  <span className={`ml-2 text-[9px] font-black uppercase tracking-widest ${
+                                    isDarkMode ? 'text-emerald-300' : 'text-emerald-600'
+                                  }`}>
+                                    BOT
+                                  </span>
+                                )}
                               </a>
                             ))}
                         </div>
@@ -425,6 +579,8 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                 </div>
               )}
             </div>
+              );
+            })()}
 
             <div className="flex justify-end">
               <a
