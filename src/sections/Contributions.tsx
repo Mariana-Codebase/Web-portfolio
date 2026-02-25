@@ -283,6 +283,7 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
   const t = CONTENT[language];
   const [contributions, setContributions] = useState<Contribution[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const since = DATA.contributionsSince;
 
   useEffect(() => {
@@ -309,6 +310,9 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
         (item) => !item.owner || item.owner.toLowerCase() !== user.toLowerCase()
       );
       setContributions(mapped);
+      if (!includeRefs) {
+        setIsLoading(false);
+      }
     };
 
     const fetchFromGithub = async (includeRefs: boolean) => {
@@ -326,6 +330,9 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
         const data = await response.json().catch(() => ({}));
         if (data?.message?.includes('API rate limit exceeded')) {
           setErrorMessage(getRateLimitMessage(language));
+        }
+        if (!includeRefs) {
+          setIsLoading(false);
         }
         return;
       }
@@ -424,9 +431,13 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
 
       if (!isMounted) return;
       setContributions(result);
+      if (!includeRefs) {
+        setIsLoading(false);
+      }
     };
 
     const loadContributions = async () => {
+      setIsLoading(true);
       if (import.meta.env.DEV) {
         await fetchFromGithub(false);
         fetchFromGithub(true);
@@ -455,6 +466,13 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
           {t.contributionsTitle}
         </h2>
       </div>
+      {isLoading && (
+        <div className={`text-xs font-semibold uppercase tracking-[0.2em] ${
+          isDarkMode ? 'text-neutral-400' : 'text-stone-600'
+        }`}>
+          {language === 'es' ? 'Cargando contribuciones...' : 'Loading contributions...'}
+        </div>
+      )}
       {errorMessage && (
         <div className={`text-xs font-semibold uppercase tracking-[0.2em] ${
           isDarkMode ? 'text-red-400' : 'text-red-600'
