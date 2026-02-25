@@ -64,6 +64,7 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
   const { language, isDarkMode } = useApp();
   const t = CONTENT[language];
   const [githubProjects, setGithubProjects] = useState<GithubProject[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const isGithubProject = (project: ProjectItem): project is GithubProject => project.source === 'github';
   const hasGithubData = githubProjects.length > 0;
@@ -162,11 +163,13 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
 
     const fetchFromGithub = async () => {
       try {
+        setIsLoading(true);
         const response = await fetch(`/api/github?user=${encodeURIComponent(user)}&limit=6`);
         if (!response.ok) throw new Error('api_error');
         const data = await response.json();
         if (!isMounted || !Array.isArray(data.projects)) return;
         setGithubProjects(mapProjects(data.projects));
+        setIsLoading(false);
       } catch {
         // Fallback to public GitHub API for local/dev.
         try {
@@ -209,7 +212,9 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
             })
           );
           setGithubProjects(mapProjects(mapped));
+          setIsLoading(false);
         } catch {
+          setIsLoading(false);
           return;
         }
       }
@@ -243,6 +248,13 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
           ))}
         </div>
       </div>
+      {isLoading && (
+        <div className={`text-xs font-semibold uppercase tracking-[0.2em] ${
+          isDarkMode ? 'text-neutral-400' : 'text-stone-600'
+        }`}>
+          {language === 'es' ? 'Cargando proyectos...' : 'Loading projects...'}
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {projectsToRender.map((p, i) => (
           <div key={i} className={`group ${themeColors.cardBg} border ${themeColors.cardBorder} p-8 rounded-[2.5rem] hover:border-blue-600 transition-all duration-500 min-h-[360px] flex flex-col justify-between`}>
