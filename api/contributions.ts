@@ -1,7 +1,8 @@
 const DEFAULT_LIMIT = 6;
-const CACHE_TTL_MS = 10 * 60 * 1000;
+const CACHE_TTL_MS = 2 * 60 * 1000;
 const responseCache = new Map<string, { expiresAt: number; data: unknown }>();
-const timelineCache = new Map<string, { expiresAt: number; data: Array<{ url: string; reference: string; author: string; event: string }> }>();
+const timelineCache = new Map<string, { expiresAt: number; data: Array<{ url: string; reference: string; author: string; event: string; createdAt?: string }> }>();
+const MAX_TIMELINE_PAGES = 10;
 
 const parseLimit = (value: string | undefined) => {
   const parsed = Number(value);
@@ -20,6 +21,12 @@ const parseSince = (value: string | undefined) => {
   const normalized = value.trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return undefined;
   return normalized;
+};
+
+const parseFresh = (value: string | undefined) => {
+  if (!value) return false;
+  const normalized = value.toLowerCase();
+  return normalized === "1" || normalized === "true";
 };
 
 const buildSearchUrl = (user: string, perPage: number, since?: string) => {
@@ -52,10 +59,132 @@ const parseOwnerRepoFromUrl = (url: string) => {
   return { owner: match[1], repo: match[2] };
 };
 
+const normalizeGithubHtmlUrl = (url: string, fallbackOwner: string, fallbackRepo: string, issueNumber: number) => {
+  if (url.includes("github.com/") && !url.includes("api.github.com")) {
+    return url;
+  }
+  const apiMatch = url.match(/api\.github\.com\/repos\/([^/]+)\/([^/]+)\/issues\/(\d+)/);
+  if (apiMatch) {
+    return `https://github.com/${apiMatch[1]}/${apiMatch[2]}/issues/${apiMatch[3]}`;
+  }
+  return `https://github.com/${fallbackOwner}/${fallbackRepo}/pull/${issueNumber}`;
+};
+
 const buildCommitHtmlUrl = (commitUrl: string) => {
   const match = commitUrl.match(/repos\/([^/]+)\/([^/]+)\/commits\/([a-f0-9]+)/i);
   if (!match) return null;
   return `https://github.com/${match[1]}/${match[2]}/commit/${match[3]}`;
+};
+
+const buildFallbackPrUrl = (owner: string, repo: string, issueNumber: number) =>
+  `https://github.com/${owner}/${repo}/pull/${issueNumber}`;
+
+const fetchSearchMentions = async (
+  owner: string,
+  repo: string,
+  issueNumber: number,
+  headers: Record<string, string>
+) => {
+  const query = `repo:${owner}/${repo} is:pr \"${owner}/${repo}#${issueNumber}\"`;
+  const url = `https://api.github.com/search/issues?q=${encodeURIComponent(query)}&per_page=50`;
+  const response = await fetch(url, { headers });
+  if (!response.ok) return [];
+  const data = (await response.json()) as {
+    items?: Array<{ html_url: string; user?: { login?: string } }>;
+  };
+  return (data.items ?? []).map((item) => ({
+    url: item.html_url,
+    reference: `${owner}/${repo}`,
+    author: item.user?.login ?? "unknown",
+    event: "mentioned"
+  }));
+};
+
+const fetchGraphqlReferences = async (
+  owner: string,
+  repo: string,
+  issueNumber: number,
+  headers: Record<string, string>
+) => {
+  const graphqlUrl = "https://api.github.com/graphql";
+  const query = `
+    query($owner:String!, $repo:String!, $number:Int!, $after:String) {
+      repository(owner:$owner, name:$repo) {
+        pullRequest(number:$number) {
+          timelineItems(first:100, after:$after, itemTypes:[CROSS_REFERENCED_EVENT, REFERENCED_EVENT, MENTIONED_EVENT]) {
+            pageInfo { hasNextPage endCursor }
+            nodes {
+              __typename
+              ... on CrossReferencedEvent {
+                actor { login }
+                source {
+                  __typename
+                  ... on PullRequest { url author { login } }
+                  ... on Issue { url author { login } }
+                }
+                createdAt
+              }
+              ... on ReferencedEvent {
+                actor { login }
+                commitUrl
+                createdAt
+              }
+              ... on MentionedEvent {
+                actor { login }
+                createdAt
+              }
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  const references: Array<{ url: string; reference: string; author: string; event: string; createdAt?: string }> = [];
+  let after: string | null = null;
+
+  while (true) {
+    const response = await fetch(graphqlUrl, {
+      method: "POST",
+      headers: {
+        ...headers,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        query,
+        variables: { owner, repo, number: issueNumber, after }
+      })
+    });
+
+    if (!response.ok) break;
+    const payload = (await response.json()) as any;
+    const timeline = payload?.data?.repository?.pullRequest?.timelineItems;
+    const nodes = timeline?.nodes ?? [];
+
+    for (const node of nodes) {
+      if (node.__typename === "CrossReferencedEvent") {
+        const author = node?.source?.author?.login ?? node?.actor?.login ?? "unknown";
+        const url = node?.source?.url ?? buildFallbackPrUrl(owner, repo, issueNumber);
+        const event = "mentioned";
+        references.push({ url, reference: `${owner}/${repo}`, author, event, createdAt: node?.createdAt });
+      } else if (node.__typename === "ReferencedEvent") {
+        const author = node?.actor?.login ?? "unknown";
+        const url = node?.commitUrl ?? buildFallbackPrUrl(owner, repo, issueNumber);
+        const event = "referenced";
+        references.push({ url, reference: `${owner}/${repo}`, author, event, createdAt: node?.createdAt });
+      } else if (node.__typename === "MentionedEvent") {
+        const author = node?.actor?.login ?? "unknown";
+        const url = buildFallbackPrUrl(owner, repo, issueNumber);
+        const event = "mentioned";
+        references.push({ url, reference: `${owner}/${repo}`, author, event, createdAt: node?.createdAt });
+      }
+    }
+
+    if (!timeline?.pageInfo?.hasNextPage) break;
+    after = timeline.pageInfo.endCursor;
+  }
+
+  return references;
 };
 
 const normalizeReferenceEvent = (event: string) => {
@@ -68,20 +197,20 @@ const fetchTimelineReferences = async (
   owner: string,
   repo: string,
   issueNumber: number,
-  headers: Record<string, string>
+  headers: Record<string, string>,
+  fresh: boolean
 ) => {
   const cacheKey = `${owner}/${repo}#${issueNumber}`;
   const now = Date.now();
   const cached = timelineCache.get(cacheKey);
-  if (cached && cached.expiresAt > now) {
+  if (!fresh && cached && cached.expiresAt > now) {
     return cached.data;
   }
-  const references: Array<{ url: string; reference: string; author: string; event: string }> = [];
-  const seen = new Set<string>();
+  const references: Array<{ url: string; reference: string; author: string; event: string; createdAt?: string }> = [];
   let page = 1;
   const perPage = 100;
 
-  while (page <= 5) {
+  while (page <= MAX_TIMELINE_PAGES) {
     const timelineResponse = await fetch(
       `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}/timeline?per_page=${perPage}&page=${page}`,
       {
@@ -97,7 +226,9 @@ const fetchTimelineReferences = async (
       url?: string;
       commit_id?: string;
       commit_url?: string;
+      created_at?: string;
       actor?: { login?: string };
+      user?: { login?: string };
       source?: {
         issue?: {
           html_url?: string;
@@ -109,46 +240,69 @@ const fetchTimelineReferences = async (
     }>;
     if (!Array.isArray(timeline) || timeline.length === 0) break;
     for (const entry of timeline) {
-      const actor = entry.actor?.login ?? "unknown";
-      if (entry.event === "cross-referenced" && entry.source?.issue?.html_url) {
-        const issue = entry.source.issue;
-        const issueUrl = issue.html_url as string;
-        const repoInfo = parseOwnerRepoFromUrl(issueUrl);
+      let actor =
+        entry.actor?.login ??
+        entry.user?.login ??
+        entry.source?.issue?.user?.login ??
+        "unknown";
+      if (actor === "unknown" && entry.event === "mentioned" && entry.url) {
+        try {
+          const mentionResponse = await fetch(entry.url, { headers });
+          if (mentionResponse.ok) {
+            const mentionData = (await mentionResponse.json()) as { user?: { login?: string } };
+            actor = mentionData.user?.login ?? actor;
+          }
+        } catch {
+          actor = actor;
+        }
+      }
+      if (entry.event === "cross-referenced") {
+        const issue = entry.source?.issue;
+        const issueUrl = issue?.html_url as string | undefined;
+        const repoInfo = issueUrl ? parseOwnerRepoFromUrl(issueUrl) : null;
+        const fallbackUrl = buildFallbackPrUrl(owner, repo, issueNumber);
         const ref = repoInfo
-          ? `${repoInfo.owner}/${repoInfo.repo}#${issue.number}`
-          : `#${issue.number}`;
+          ? `${repoInfo.owner}/${repoInfo.repo}#${issue?.number}`
+          : `${owner}/${repo}#${issueNumber}`;
         const event = normalizeReferenceEvent("cross-referenced");
-        const key = `${issueUrl}|${actor}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          references.push({ url: issueUrl, reference: ref, author: actor, event });
-        }
+        references.push({
+          url: issueUrl ?? fallbackUrl,
+          reference: ref,
+          author: actor,
+          event,
+          createdAt: entry.created_at
+        });
         continue;
       }
 
-      if (entry.event === "referenced" && entry.commit_url && entry.commit_id) {
-        const commitUrl = buildCommitHtmlUrl(entry.commit_url) ?? entry.commit_url;
-        const repoInfo = parseOwnerRepoFromUrl(commitUrl) ?? { owner, repo };
-        const ref = `${repoInfo.owner}/${repoInfo.repo}@${String(entry.commit_id).slice(0, 7)}`;
+      if (entry.event === "referenced") {
+        const commitUrl = entry.commit_url
+          ? buildCommitHtmlUrl(entry.commit_url) ?? entry.commit_url
+          : undefined;
+        const repoInfo = commitUrl ? parseOwnerRepoFromUrl(commitUrl) ?? { owner, repo } : { owner, repo };
+        const ref = entry.commit_id
+          ? `${repoInfo.owner}/${repoInfo.repo}@${String(entry.commit_id).slice(0, 7)}`
+          : `${owner}/${repo}#${issueNumber}`;
         const event = normalizeReferenceEvent("referenced");
-        const key = `${commitUrl}|${actor}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          references.push({ url: commitUrl, reference: ref, author: actor, event });
-        }
+        references.push({
+          url: commitUrl ?? buildFallbackPrUrl(owner, repo, issueNumber),
+          reference: ref,
+          author: actor,
+          event,
+          createdAt: entry.created_at
+        });
         continue;
       }
 
-      if (entry.event === "mentioned" && entry.url) {
-        const mentionUrl = entry.url as string;
+      if (entry.event === "mentioned") {
+        const rawUrl =
+          (entry.url as string | undefined) ||
+          `https://github.com/${owner}/${repo}/pull/${issueNumber}`;
+        const mentionUrl = normalizeGithubHtmlUrl(rawUrl, owner, repo, issueNumber);
         const repoInfo = parseOwnerRepoFromUrl(mentionUrl) ?? { owner, repo };
         const ref = `${repoInfo.owner}/${repoInfo.repo}`;
         const event = normalizeReferenceEvent("mentioned");
-        const key = `${mentionUrl}|${actor}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          references.push({ url: mentionUrl, reference: ref, author: actor, event });
-        }
+        references.push({ url: mentionUrl, reference: ref, author: actor, event, createdAt: entry.created_at });
       }
     }
     if (timeline.length < perPage) break;
@@ -156,10 +310,18 @@ const fetchTimelineReferences = async (
   }
 
   timelineCache.set(cacheKey, { expiresAt: now + CACHE_TTL_MS, data: references });
-  return references;
+  try {
+    const graphqlRefs = await fetchGraphqlReferences(owner, repo, issueNumber, headers);
+    const searchRefs = await fetchSearchMentions(owner, repo, issueNumber, headers);
+    return references.concat(graphqlRefs, searchRefs);
+  } catch {
+    return references;
+  }
 };
 
 export default async function handler(req: any, res: any) {
+  responseCache.clear();
+  timelineCache.clear();
   const user =
     typeof req.query?.user === "string"
       ? req.query.user
@@ -175,6 +337,9 @@ export default async function handler(req: any, res: any) {
   );
   const since = parseSince(
     typeof req.query?.since === "string" ? req.query.since : undefined
+  );
+  const fresh = parseFresh(
+    typeof req.query?.fresh === "string" ? req.query.fresh : undefined
   );
 
   if (!user) {
@@ -198,7 +363,7 @@ export default async function handler(req: any, res: any) {
   const cacheKey = `${user}:${limit}:${includeRefs ? "refs" : "norefs"}:${since ?? "all"}`;
   const now = Date.now();
   const cached = responseCache.get(cacheKey);
-  if (cached && cached.expiresAt > now) {
+  if (!fresh && cached && cached.expiresAt > now) {
     res.setHeader("Cache-Control", "s-maxage=600, stale-while-revalidate=3600");
     res.status(200).json(cached.data);
     return;
@@ -232,7 +397,7 @@ export default async function handler(req: any, res: any) {
       url: string;
       reference: string;
       owner: string;
-      references: Array<{ url: string; reference: string; author: string; event: string }>;
+      references: Array<{ url: string; reference: string; author: string; event: string; createdAt?: string }>;
     }> = [];
 
     for (const item of searchData.items ?? []) {
@@ -292,16 +457,17 @@ export default async function handler(req: any, res: any) {
         continue;
       }
 
-      let references: Array<{ url: string; reference: string; author: string; event: string }> = [];
+      let references: Array<{ url: string; reference: string; author: string; event: string; createdAt?: string }> = [];
       if (includeRefs) {
         const ownerRepo = parseOwnerRepo(repoData.fullName);
         if (ownerRepo) {
           try {
-            const allRefs = await fetchTimelineReferences(
+          const allRefs = await fetchTimelineReferences(
               ownerRepo.owner,
               ownerRepo.repo,
               item.number,
-              headers
+            headers,
+            fresh
             );
             references = allRefs.filter(
               (issue) => issue.author.toLowerCase() !== user.toLowerCase()
