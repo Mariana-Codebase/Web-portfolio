@@ -2,6 +2,7 @@ const DEFAULT_LIMIT = 6;
 const CACHE_TTL_MS = 2 * 60 * 1000;
 const responseCache = new Map<string, { expiresAt: number; data: unknown }>();
 const timelineCache = new Map<string, { expiresAt: number; data: Array<{ url: string; reference: string; author: string; event: string; createdAt?: string }> }>();
+const releaseCache = new Map<string, { expiresAt: number; data: { name?: string; tag?: string; url?: string } | null }>();
 const MAX_TIMELINE_PAGES = 10;
 
 const parseLimit = (value: string | undefined) => {
@@ -24,6 +25,12 @@ const parseSince = (value: string | undefined) => {
 };
 
 const parseFresh = (value: string | undefined) => {
+  if (!value) return false;
+  const normalized = value.toLowerCase();
+  return normalized === "1" || normalized === "true";
+};
+
+const parseClearCache = (value: string | undefined) => {
   if (!value) return false;
   const normalized = value.toLowerCase();
   return normalized === "1" || normalized === "true";
@@ -78,6 +85,38 @@ const buildCommitHtmlUrl = (commitUrl: string) => {
 
 const buildFallbackPrUrl = (owner: string, repo: string, issueNumber: number) =>
   `https://github.com/${owner}/${repo}/pull/${issueNumber}`;
+
+const fetchLatestRelease = async (
+  owner: string,
+  repo: string,
+  headers: Record<string, string>,
+  fresh: boolean
+) => {
+  const cacheKey = `${owner}/${repo}`;
+  const now = Date.now();
+  const cached = releaseCache.get(cacheKey);
+  if (!fresh && cached && cached.expiresAt > now) {
+    return cached.data;
+  }
+
+  try {
+    const response = await fetch(
+      `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/releases/latest`,
+      { headers }
+    );
+    if (!response.ok) {
+      releaseCache.set(cacheKey, { expiresAt: now + CACHE_TTL_MS, data: null });
+      return null;
+    }
+    const data = (await response.json()) as { name?: string; tag_name?: string; html_url?: string };
+    const payload = { name: data.name, tag: data.tag_name, url: data.html_url };
+    releaseCache.set(cacheKey, { expiresAt: now + CACHE_TTL_MS, data: payload });
+    return payload;
+  } catch {
+    releaseCache.set(cacheKey, { expiresAt: now + CACHE_TTL_MS, data: null });
+    return null;
+  }
+};
 
 const fetchSearchMentions = async (
   owner: string,
@@ -320,8 +359,6 @@ const fetchTimelineReferences = async (
 };
 
 export default async function handler(req: any, res: any) {
-  responseCache.clear();
-  timelineCache.clear();
   const user =
     typeof req.query?.user === "string"
       ? req.query.user
@@ -341,6 +378,14 @@ export default async function handler(req: any, res: any) {
   const fresh = parseFresh(
     typeof req.query?.fresh === "string" ? req.query.fresh : undefined
   );
+  const clearCache = parseClearCache(
+    typeof req.query?.clearCache === "string" ? req.query.clearCache : undefined
+  );
+
+  if (clearCache) {
+    responseCache.clear();
+    timelineCache.clear();
+  }
 
   if (!user) {
     res.status(400).json({ error: "Missing GitHub user." });
@@ -398,6 +443,7 @@ export default async function handler(req: any, res: any) {
       reference: string;
       owner: string;
       references: Array<{ url: string; reference: string; author: string; event: string; createdAt?: string }>;
+      release?: { name?: string; tag?: string; url?: string } | null;
     }> = [];
 
     for (const item of searchData.items ?? []) {
@@ -458,6 +504,7 @@ export default async function handler(req: any, res: any) {
       }
 
       let references: Array<{ url: string; reference: string; author: string; event: string; createdAt?: string }> = [];
+      let release: { name?: string; tag?: string; url?: string } | null = null;
       if (includeRefs) {
         const ownerRepo = parseOwnerRepo(repoData.fullName);
         if (ownerRepo) {
@@ -475,6 +522,12 @@ export default async function handler(req: any, res: any) {
           } catch {
             references = [];
           }
+
+          try {
+            release = await fetchLatestRelease(ownerRepo.owner, ownerRepo.repo, headers, fresh);
+          } catch {
+            release = null;
+          }
         }
       }
 
@@ -486,7 +539,8 @@ export default async function handler(req: any, res: any) {
         url: item.html_url,
         reference: `${repoData.fullName}#${item.number}`,
         owner: repoData.owner,
-        references
+        references,
+        release
       });
     }
 

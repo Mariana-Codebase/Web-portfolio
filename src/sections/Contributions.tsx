@@ -12,6 +12,7 @@ type Contribution = {
   reference: string;
   owner?: string;
   references?: Array<{ url: string; reference: string; author: string; event: string }>;
+  release?: { name?: string; tag?: string; url?: string } | null;
 };
 
 const CONTRIBUTIONS_LIMIT = 6;
@@ -34,6 +35,7 @@ const mapContributions = (items: Array<{
   reference: string;
   owner?: string;
   references?: Array<{ url: string; reference: string; author: string; event: string }>;
+  release?: { name?: string; tag?: string; url?: string } | null;
 }>): Contribution[] => {
   return items
     .filter((item) => item.status === 'OPEN' || item.status === 'MERGED')
@@ -45,7 +47,8 @@ const mapContributions = (items: Array<{
       url: item.url,
       reference: item.reference,
       owner: item.owner,
-      references: Array.isArray(item.references) ? item.references : []
+      references: Array.isArray(item.references) ? item.references : [],
+      release: item.release ?? null
     }));
 };
 
@@ -74,6 +77,16 @@ const buildCommitHtmlUrl = (commitUrl: string) => {
 
 const buildFallbackPrUrl = (owner: string, repo: string, issueNumber: number) =>
   `https://github.com/${owner}/${repo}/pull/${issueNumber}`;
+
+const fetchLatestRelease = async (owner: string, repo: string, headers: Record<string, string>) => {
+  const response = await fetch(
+    `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/releases/latest`,
+    { headers }
+  );
+  if (!response.ok) return null;
+  const data = await response.json();
+  return { name: data?.name, tag: data?.tag_name, url: data?.html_url };
+};
 
 const fetchSearchMentions = async (
   owner: string,
@@ -293,7 +306,7 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
 
     const fetchFromApi = async (includeRefs: boolean) => {
       const sinceParam = since ? `&since=${encodeURIComponent(since)}` : '';
-      const freshParam = includeRefs ? '&fresh=1' : '';
+      const freshParam = '';
       const response = await fetch(
         `/api/contributions?user=${encodeURIComponent(user)}&limit=${CONTRIBUTIONS_LIMIT}&includeRefs=${includeRefs ? '1' : '0'}${sinceParam}${freshParam}`
       );
@@ -402,6 +415,7 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
 
         repoCache.set(repoUrl, repoData);
         let references: Array<{ url: string; reference: string; author: string; event: string }> = [];
+        let release: { name?: string; tag?: string; url?: string } | null = null;
         if (includeRefs) {
           try {
             const allRefs = await fetchTimelineReferences(
@@ -416,6 +430,12 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
           } catch {
             references = [];
           }
+
+          try {
+            release = await fetchLatestRelease(repoData.owner, repoData.name, headers);
+          } catch {
+            release = null;
+          }
         }
         result.push({
           status,
@@ -425,7 +445,8 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
           url: item.html_url,
           reference: `${repoData.fullName}#${item.number}`,
           owner: repoData.owner,
-          references
+          references,
+          release
         });
       }
 
@@ -527,6 +548,21 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                   <div className="text-sm font-semibold tracking-tight text-left mb-3">
                     {item.title}
                   </div>
+                )}
+                {item.release && (item.release.name || item.release.tag) && (
+                  <a
+                    href={item.release.url || item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] mb-3 ${
+                      isDarkMode ? 'text-emerald-300' : 'text-emerald-700'
+                    }`}
+                  >
+                    <span>Release</span>
+                    <span className={isDarkMode ? 'text-neutral-200' : 'text-stone-700'}>
+                      {item.release.name || item.release.tag}
+                    </span>
+                  </a>
                 )}
               </div>
 
