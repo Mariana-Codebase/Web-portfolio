@@ -3,7 +3,8 @@ const CACHE_TTL_MS = 2 * 60 * 1000;
 const responseCache = new Map<string, { expiresAt: number; data: unknown }>();
 const timelineCache = new Map<string, { expiresAt: number; data: Array<{ url: string; reference: string; author: string; event: string; createdAt?: string }> }>();
 const releaseCache = new Map<string, { expiresAt: number; data: { name?: string; tag?: string; url?: string } | null }>();
-const MAX_TIMELINE_PAGES = 10;
+const MAX_TIMELINE_PAGES = 1;
+const WITH_REFS_LIMIT = 2;
 
 const parseLimit = (value: string | undefined) => {
   const parsed = Number(value);
@@ -349,13 +350,7 @@ const fetchTimelineReferences = async (
   }
 
   timelineCache.set(cacheKey, { expiresAt: now + CACHE_TTL_MS, data: references });
-  try {
-    const graphqlRefs = await fetchGraphqlReferences(owner, repo, issueNumber, headers);
-    const searchRefs = await fetchSearchMentions(owner, repo, issueNumber, headers);
-    return references.concat(graphqlRefs, searchRefs);
-  } catch {
-    return references;
-  }
+  return references;
 };
 
 export default async function handler(req: any, res: any) {
@@ -415,7 +410,8 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const searchResponse = await fetch(buildSearchUrl(user, 50, since), { headers });
+    const perPage = Math.min(limit * 3, 30);
+    const searchResponse = await fetch(buildSearchUrl(user, perPage, since), { headers });
     if (!searchResponse.ok) {
       const message = await searchResponse.text();
       res.status(searchResponse.status).json({ error: message || "GitHub API error" });
@@ -450,52 +446,19 @@ export default async function handler(req: any, res: any) {
       if (contributions.length >= limit) break;
       if (!item.pull_request?.url) continue;
 
-      let status: "OPEN" | "MERGED" | null = null;
-      if (item.state === "open") {
-        status = "OPEN";
-      } else if (item.state === "closed") {
-        try {
-          const prResponse = await fetch(item.pull_request.url, { headers });
-          if (prResponse.ok) {
-            const prData = (await prResponse.json()) as { merged_at: string | null };
-            if (prData.merged_at) status = "MERGED";
-          }
-        } catch {
-          status = null;
-        }
-      }
+      const status: "OPEN" | "MERGED" | null =
+        item.state === "open" ? "OPEN" :
+        item.state === "closed" ? "MERGED" :
+        null;
 
       if (!status) continue;
 
       const repoUrl = item.repository_url;
       let repoData = repoCache.get(repoUrl);
       if (!repoData) {
-        try {
-          const repoResponse = await fetch(repoUrl, { headers });
-          if (repoResponse.ok) {
-            const repoJson = (await repoResponse.json()) as {
-              name: string;
-              full_name: string;
-              stargazers_count: number;
-              owner: { login: string };
-            };
-            repoData = {
-              name: repoJson.name,
-              fullName: repoJson.full_name,
-              stars: repoJson.stargazers_count,
-              owner: repoJson.owner.login
-            };
-          }
-        } catch {
-          repoData = undefined;
-        }
-
-        if (!repoData) {
-          const parsed = parseRepoFromUrl(repoUrl);
-          const owner = parsed.fullName.split('/')[0] ?? parsed.fullName;
-          repoData = { name: parsed.name, fullName: parsed.fullName, stars: 0, owner };
-        }
-
+        const parsed = parseRepoFromUrl(repoUrl);
+        const owner = parsed.fullName.split('/')[0] ?? parsed.fullName;
+        repoData = { name: parsed.name, fullName: parsed.fullName, stars: 0, owner };
         repoCache.set(repoUrl, repoData);
       }
 
@@ -505,27 +468,23 @@ export default async function handler(req: any, res: any) {
 
       let references: Array<{ url: string; reference: string; author: string; event: string; createdAt?: string }> = [];
       let release: { name?: string; tag?: string; url?: string } | null = null;
-      if (includeRefs) {
+
+      const shouldIncludeRefs = includeRefs && fresh && contributions.length < WITH_REFS_LIMIT;
+
+      if (shouldIncludeRefs) {
         const ownerRepo = parseOwnerRepo(repoData.fullName);
         if (ownerRepo) {
           try {
-          const allRefs = await fetchTimelineReferences(
-              ownerRepo.owner,
-              ownerRepo.repo,
-              item.number,
-            headers,
-            fresh
-            );
+            const [allRefs, latestRelease] = await Promise.all([
+              fetchTimelineReferences(ownerRepo.owner, ownerRepo.repo, item.number, headers, fresh),
+              fetchLatestRelease(ownerRepo.owner, ownerRepo.repo, headers, fresh)
+            ]);
             references = allRefs.filter(
               (issue) => issue.author.toLowerCase() !== user.toLowerCase()
             );
+            release = latestRelease;
           } catch {
             references = [];
-          }
-
-          try {
-            release = await fetchLatestRelease(ownerRepo.owner, ownerRepo.repo, headers, fresh);
-          } catch {
             release = null;
           }
         }
