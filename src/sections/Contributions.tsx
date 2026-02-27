@@ -306,7 +306,7 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
 
     const fetchFromApi = async (includeRefs: boolean) => {
       const sinceParam = since ? `&since=${encodeURIComponent(since)}` : '';
-      const freshParam = '';
+      const freshParam = includeRefs ? '&fresh=1' : '';
       const response = await fetch(
         `/api/contributions?user=${encodeURIComponent(user)}&limit=${CONTRIBUTIONS_LIMIT}&includeRefs=${includeRefs ? '1' : '0'}${sinceParam}${freshParam}`
       );
