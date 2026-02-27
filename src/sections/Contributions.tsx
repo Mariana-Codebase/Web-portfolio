@@ -18,6 +18,12 @@ type Contribution = {
 const CONTRIBUTIONS_LIMIT = 6;
 const SEARCH_PAGE_SIZE = 12;
 
+const OPENCLAW_RELEASE = {
+  name: 'openclaw 2026.2.24',
+  tag: 'v2026.2.24',
+  url: 'https://github.com/openclaw/openclaw/releases/tag/v2026.2.24'
+};
+
 interface ContributionsProps {
   themeColors: {
     cardBg: string;
@@ -565,21 +571,25 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                     {item.title}
                   </div>
                 )}
-                {item.release && (item.release.name || item.release.tag) && (
-                  <a
-                    href={item.release.url || item.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] mb-3 ${
-                      isDarkMode ? 'text-emerald-300' : 'text-emerald-700'
-                    }`}
-                  >
-                    <span>Release</span>
-                    <span className={isDarkMode ? 'text-neutral-200' : 'text-stone-700'}>
-                      {item.release.name || item.release.tag}
-                    </span>
-                  </a>
-                )}
+                {(() => {
+                  const isOpenClaw = item.reference?.toLowerCase().startsWith('openclaw/openclaw');
+                  const release = isOpenClaw ? OPENCLAW_RELEASE : item.release;
+                  return release && (release.name || release.tag) ? (
+                    <a
+                      href={release.url || item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] mb-3 ${
+                        isDarkMode ? 'text-emerald-300' : 'text-emerald-700'
+                      }`}
+                    >
+                      <span>Release</span>
+                      <span className={isDarkMode ? 'text-neutral-200' : 'text-stone-700'}>
+                        {release.name || release.tag}
+                      </span>
+                    </a>
+                  ) : null;
+                })()}
               </div>
 
               {(referencedRefs.length > 0 || mentionedRefs.length > 0) && (
