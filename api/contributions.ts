@@ -452,9 +452,32 @@ export default async function handler(req: any, res: any) {
       const repoUrl = item.repository_url;
       let repoData = repoCache.get(repoUrl);
       if (!repoData) {
-        const parsed = parseRepoFromUrl(repoUrl);
-        const owner = parsed.fullName.split('/')[0] ?? parsed.fullName;
-        repoData = { name: parsed.name, fullName: parsed.fullName, stars: 0, owner };
+        try {
+          const repoResponse = await fetch(repoUrl, { headers });
+          if (repoResponse.ok) {
+            const repoJson = (await repoResponse.json()) as {
+              name: string;
+              full_name: string;
+              stargazers_count: number;
+              owner: { login: string };
+            };
+            repoData = {
+              name: repoJson.name,
+              fullName: repoJson.full_name,
+              stars: repoJson.stargazers_count,
+              owner: repoJson.owner.login
+            };
+          }
+        } catch {
+          repoData = undefined;
+        }
+
+        if (!repoData) {
+          const parsed = parseRepoFromUrl(repoUrl);
+          const owner = parsed.fullName.split("/")[0] ?? parsed.fullName;
+          repoData = { name: parsed.name, fullName: parsed.fullName, stars: 0, owner };
+        }
+
         repoCache.set(repoUrl, repoData);
       }
 
