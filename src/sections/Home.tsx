@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { CONTENT, DATA } from '../data/content';
 import { Github, Linkedin, Mail, Copy } from 'lucide-react';
-import { LeetCodeIcon } from '../components/LeetCodeIcon';
 
 interface HomeProps {
   themeColors: {
@@ -61,13 +60,6 @@ export const Home: React.FC<HomeProps> = ({ themeColors }) => {
               href: "mailto:mariana.data@outlook.com", 
               tooltip: t.tooltips.mail,
               hoverColor: isDarkMode ? 'hover:bg-[#f43f5e] hover:text-white hover:border-[#f43f5e]' : 'hover:bg-[#f43f5e] hover:text-white hover:border-[#f43f5e]'
-            },
-            { 
-              id: 'leetcode', 
-              icon: <LeetCodeIcon size={20} />,
-              href: "#", 
-              tooltip: t.tooltips.leetcode,
-              hoverColor: isDarkMode ? 'hover:bg-[#fbbf24] hover:text-black hover:border-[#fbbf24]' : 'hover:bg-[#fbbf24] hover:text-black hover:border-[#fbbf24]'
             }
           ].map(social => (
             <a 

@@ -1,3 +1,6 @@
+import path from "path";
+import fs from "fs";
+
 const DEFAULT_LIMIT = 6;
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const responseCache = new Map<string, { expiresAt: number; data: unknown }>();
@@ -117,114 +120,6 @@ const fetchLatestRelease = async (
     releaseCache.set(cacheKey, { expiresAt: now + CACHE_TTL_MS, data: null });
     return null;
   }
-};
-
-const fetchSearchMentions = async (
-  owner: string,
-  repo: string,
-  issueNumber: number,
-  headers: Record<string, string>
-) => {
-  const query = `repo:${owner}/${repo} is:pr \"${owner}/${repo}#${issueNumber}\"`;
-  const url = `https://api.github.com/search/issues?q=${encodeURIComponent(query)}&per_page=50`;
-  const response = await fetch(url, { headers });
-  if (!response.ok) return [];
-  const data = (await response.json()) as {
-    items?: Array<{ html_url: string; user?: { login?: string } }>;
-  };
-  return (data.items ?? []).map((item) => ({
-    url: item.html_url,
-    reference: `${owner}/${repo}`,
-    author: item.user?.login ?? "unknown",
-    event: "mentioned"
-  }));
-};
-
-const fetchGraphqlReferences = async (
-  owner: string,
-  repo: string,
-  issueNumber: number,
-  headers: Record<string, string>
-) => {
-  const graphqlUrl = "https://api.github.com/graphql";
-  const query = `
-    query($owner:String!, $repo:String!, $number:Int!, $after:String) {
-      repository(owner:$owner, name:$repo) {
-        pullRequest(number:$number) {
-          timelineItems(first:100, after:$after, itemTypes:[CROSS_REFERENCED_EVENT, REFERENCED_EVENT, MENTIONED_EVENT]) {
-            pageInfo { hasNextPage endCursor }
-            nodes {
-              __typename
-              ... on CrossReferencedEvent {
-                actor { login }
-                source {
-                  __typename
-                  ... on PullRequest { url author { login } }
-                  ... on Issue { url author { login } }
-                }
-                createdAt
-              }
-              ... on ReferencedEvent {
-                actor { login }
-                commitUrl
-                createdAt
-              }
-              ... on MentionedEvent {
-                actor { login }
-                createdAt
-              }
-            }
-          }
-        }
-      }
-    }
-  `;
-
-  const references: Array<{ url: string; reference: string; author: string; event: string; createdAt?: string }> = [];
-  let after: string | null = null;
-
-  while (true) {
-    const response = await fetch(graphqlUrl, {
-      method: "POST",
-      headers: {
-        ...headers,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        query,
-        variables: { owner, repo, number: issueNumber, after }
-      })
-    });
-
-    if (!response.ok) break;
-    const payload = (await response.json()) as any;
-    const timeline = payload?.data?.repository?.pullRequest?.timelineItems;
-    const nodes = timeline?.nodes ?? [];
-
-    for (const node of nodes) {
-      if (node.__typename === "CrossReferencedEvent") {
-        const author = node?.source?.author?.login ?? node?.actor?.login ?? "unknown";
-        const url = node?.source?.url ?? buildFallbackPrUrl(owner, repo, issueNumber);
-        const event = "mentioned";
-        references.push({ url, reference: `${owner}/${repo}`, author, event, createdAt: node?.createdAt });
-      } else if (node.__typename === "ReferencedEvent") {
-        const author = node?.actor?.login ?? "unknown";
-        const url = node?.commitUrl ?? buildFallbackPrUrl(owner, repo, issueNumber);
-        const event = "referenced";
-        references.push({ url, reference: `${owner}/${repo}`, author, event, createdAt: node?.createdAt });
-      } else if (node.__typename === "MentionedEvent") {
-        const author = node?.actor?.login ?? "unknown";
-        const url = buildFallbackPrUrl(owner, repo, issueNumber);
-        const event = "mentioned";
-        references.push({ url, reference: `${owner}/${repo}`, author, event, createdAt: node?.createdAt });
-      }
-    }
-
-    if (!timeline?.pageInfo?.hasNextPage) break;
-    after = timeline.pageInfo.endCursor;
-  }
-
-  return references;
 };
 
 const normalizeReferenceEvent = (event: string) => {
@@ -398,6 +293,22 @@ export default async function handler(req: any, res: any) {
 
   if (token) {
     headers.Authorization = `Bearer ${token}`;
+  }
+
+  // File cache: datos precargados en public/contributions-cache.json (actualizado cada 10 min)
+  if (!fresh && limit === DEFAULT_LIMIT && !includeRefs && typeof process !== "undefined" && process.cwd) {
+    try {
+      const cachePath = path.join(process.cwd(), "public", "contributions-cache.json");
+      const raw = fs.readFileSync(cachePath, "utf8");
+      const data = JSON.parse(raw) as { user?: string; contributions?: unknown[] };
+      if (data?.user === user && Array.isArray(data.contributions) && data.contributions.length > 0) {
+        res.setHeader("Cache-Control", "s-maxage=600, stale-while-revalidate=3600");
+        res.status(200).json({ user: data.user, contributions: data.contributions });
+        return;
+      }
+    } catch {
+      // sin archivo o inválido: seguir con caché en memoria o GitHub
+    }
   }
 
   const cacheKey = `${user}:${limit}:${includeRefs ? "refs" : "norefs"}:${since ?? "all"}`;

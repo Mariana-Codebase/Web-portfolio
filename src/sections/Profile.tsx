@@ -31,9 +31,9 @@ export const Profile: React.FC<ProfileProps> = ({ themeColors }) => {
           </div>
           <div className="space-y-5">
             <div className={`p-4 rounded-2xl border ${themeColors.cardBorder} ${isDarkMode ? 'bg-white/[0.02]' : 'bg-transparent'}`}>
-              <h5 className="text-[11px] font-black tracking-widest text-blue-500/90 mb-3 uppercase italic">{t.stackCategories.frontend}</h5>
+              <h5 className="text-[11px] font-black tracking-widest text-blue-500/90 mb-3 uppercase italic">{t.stackCategories.secnet}</h5>
               <div className="flex flex-wrap gap-2">
-                {DATA.skills.frontend.map(s => (
+                {DATA.skills.secnet.map((s) => (
                   <span key={s} className={`px-3 py-1.5 ${isDarkMode ? 'bg-white/5' : 'bg-stone-200/70'} rounded-full text-[11px] font-black border ${themeColors.cardBorder} hover:bg-blue-600 hover:text-white transition-all tracking-tight uppercase`}>
                     {s}
                   </span>
@@ -42,9 +42,9 @@ export const Profile: React.FC<ProfileProps> = ({ themeColors }) => {
             </div>
             
             <div className={`p-4 rounded-2xl border ${themeColors.cardBorder} ${isDarkMode ? 'bg-white/[0.02]' : 'bg-transparent'}`}>
-              <h5 className="text-[11px] font-black tracking-widest text-blue-500/90 mb-3 uppercase italic">{t.stackCategories.backend}</h5>
+              <h5 className="text-[11px] font-black tracking-widest text-blue-500/90 mb-3 uppercase italic">{t.stackCategories.automation}</h5>
               <div className="flex flex-wrap gap-2">
-                {DATA.skills.backend.map(s => (
+                {DATA.skills.automation.map((s) => (
                   <span key={s} className={`px-3 py-1.5 ${isDarkMode ? 'bg-white/5' : 'bg-stone-200/70'} rounded-full text-[11px] font-black border ${themeColors.cardBorder} hover:bg-blue-600 hover:text-white transition-all tracking-tight uppercase`}>
                     {s}
                   </span>
@@ -53,9 +53,9 @@ export const Profile: React.FC<ProfileProps> = ({ themeColors }) => {
             </div>
             
             <div className={`p-4 rounded-2xl border ${themeColors.cardBorder} ${isDarkMode ? 'bg-white/[0.02]' : 'bg-transparent'}`}>
-              <h5 className="text-[11px] font-black tracking-widest text-blue-500/90 mb-3 uppercase italic">{t.stackCategories.cloud}</h5>
+              <h5 className="text-[11px] font-black tracking-widest text-blue-500/90 mb-3 uppercase italic">{t.stackCategories.pipeline}</h5>
               <div className="flex flex-wrap gap-2">
-                {DATA.skills.cloud.map(s => (
+                {DATA.skills.pipeline.map((s) => (
                   <span key={s} className={`px-3 py-1.5 ${isDarkMode ? 'bg-white/5' : 'bg-stone-200/70'} rounded-full text-[11px] font-black border ${themeColors.cardBorder} hover:bg-blue-600 hover:text-white transition-all tracking-tight uppercase`}>
                     {s}
                   </span>

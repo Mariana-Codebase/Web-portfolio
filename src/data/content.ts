@@ -38,9 +38,9 @@ export interface Content {
   profileDesc: string;
   stackTitle: string;
   stackCategories: {
-    frontend: string;
-    backend: string;
-    cloud: string;
+    secnet: string;
+    automation: string;
+    pipeline: string;
   };
   langTitle: string;
   projectsTitle: string;
@@ -62,7 +62,6 @@ export interface Content {
     github: string;
     linkedin: string;
     mail: string;
-    leetcode: string;
     theme: string;
   };
 }
@@ -79,9 +78,9 @@ export const DATA = {
       "github-api": "API"
   } as Record<string, string>,
   skills: {
-    frontend: ["React", "TypeScript", "TailwindCSS"],
-    backend: ["Node.js", "Python", "GraphQL"],
-    cloud: ["AWS", "Docker"]
+    secnet: ["CCNAV7", "Network Analysis", "Hardware Security"],
+    automation: ["Python", "Linux CLI", "Bash Scripting"],
+    pipeline: ["AWS", "Docker", "Pipeline Hardening"]
   },
   langs: [
     { n: { es: "ESPAÑOL", en: "SPANISH" }, l: { es: "Nativo", en: "Native" } },
@@ -105,47 +104,47 @@ export const DATA = {
 
 export const CONTENT: Record<Language, Content> = {
   es: {
-    role: "Estudiante de Ingeniería Informática",
-    bio: "Estudiante de Ingeniería Informática. Actualmente exploro la intersección entre el código y la infraestructura, utilizando Python para crear herramientas que hagan los procesos más ágiles y seguros. En constante evolución técnica.",
+    role: "Estudiante de Ingeniería Informática orientada a ciberseguridad",
+    bio: "Enfocada en la intersección entre código, infraestructura y seguridad. Especializada en construir herramientas en Python para automatizar flujos de trabajo de seguridad y he contribuido parches de seguridad de nivel producción al ecosistema OpenClaw (v2026.2.24). Certificada CCNA, con un profundo interés en el análisis de redes y la seguridad de hardware. Actualmente evolucionando de builder a defender.",
     nav: { home: "INICIO", about: "PERFIL", certs: "FORMACIÓN", projects: "PROYECTOS", contributions: "CONTRIBUCIONES" },
     profileTitle: "/ Perfil Profesional",
-    profileSlogan: "Ingeniería aplicada a sistemas reales.",
-    profileDesc: "Como estudiante de Ingeniería Informática, me enfoco en redes, ciberseguridad e infraestructura. Me interesa construir soluciones prácticas y seguras, apoyándome en Python para automatizar procesos y mejorar la operación técnica.",
+    profileSlogan: "Código, infraestructura y seguridad.",
+    profileDesc: "Estudiante de último año de Ingeniería Informática enfocada en la automatización de ciberseguridad e infraestructuras. Con certificación CCNAV7, diseño herramientas en Python para el endurecimiento de sistemas y la optimización de seguridad en pipelines CI/CD.",
     stackTitle: "Stack Tecnológico",
     stackCategories: {
-      frontend: "Frontend",
-      backend: "Backend",
-      cloud: "Cloud & DevOps"
+      secnet: "Redes y seguridad",
+      automation: "Automatización y herramientas",
+      pipeline: "CI/CD y DevOps"
     },
     langTitle: "Idiomas",
     projectsTitle: "Proyectos_",
     contributionsTitle: "Contribuciones_",
     certsTitle: "Formación_",
     categories: { ALL: "TODOS", WEB: "WEB", MOBILE: "MÓVIL", BACKEND: "BACKEND", API: "API", EDU: "EDUCACIÓN", CERT: "CERTIFICACIONES", INTERN: "PASANTÍAS" },
-    status: "ESTADO: ESTABLE",
+    status: "ESTADO: DEFENDER MODE",
     designedBy: "Diseñado y creado por",
-    tooltips: { github: "GitHub", linkedin: "LinkedIn", mail: "Correo", leetcode: "LeetCode", theme: "Cambiar Tema" }
+    tooltips: { github: "GitHub", linkedin: "LinkedIn", mail: "Correo", theme: "Cambiar Tema" }
   },
   en: {
-    role: "Computer Engineering Student",
-    bio: "Computer Engineering student. Currently exploring the intersection between code and infrastructure, using Python to create tools that make processes more agile and secure. In constant technical evolution.",
+    role: "Computer Engineering student focused on security",
+    bio: "Focused on the intersection of code, infrastructure, and security. I build Python-based tools to automate security workflows and have contributed production-level security patches to the OpenClaw ecosystem (v2026.2.24). CCNA certified with a deep interest in network analysis and hardware security. Currently evolving from a builder to a defender.",
     nav: { home: "HOME", about: "PROFILE", certs: "EDUCATION", projects: "PROJECTS", contributions: "CONTRIBUTIONS" },
     profileTitle: "/ Professional Profile",
-    profileSlogan: "Engineering for real systems.",
-    profileDesc: "As a Computer Engineering student, I focus on networks, cybersecurity, and infrastructure. I enjoy building practical, secure solutions and use Python to automate processes and improve technical operations.",
-    stackTitle: "Tech Stack",
+    profileSlogan: "Securing the digital infrastructure.",
+    profileDesc: "Final-year Computer Engineering student focused on cybersecurity and infrastructure automation. CCNAv7 certified. I build Python tools for system hardening and CI/CD pipeline security optimization.",
+    stackTitle: "Security‑focused tech stack",
     stackCategories: {
-      frontend: "Frontend",
-      backend: "Backend",
-      cloud: "Cloud & DevOps"
+      secnet: "Security & Networks",
+      automation: "Automation & Tooling",
+      pipeline: "CI/CD & DevOps"
     },
     langTitle: "Languages",
     projectsTitle: "Projects_",
     contributionsTitle: "Contributions_",
     certsTitle: "Education_",
     categories: { ALL: "ALL", WEB: "WEB", MOBILE: "MOBILE", BACKEND: "BACKEND", API: "API", EDU: "EDUCATION", CERT: "CERTIFICATIONS", INTERN: "INTERNSHIPS" },
-    status: "STATUS: STABLE",
+    status: "STATUS: DEFENDER MODE",
     designedBy: "Designed and created by",
-    tooltips: { github: "GitHub", linkedin: "LinkedIn", mail: "Email", leetcode: "LeetCode", theme: "Switch Theme" }
+    tooltips: { github: "GitHub", linkedin: "LinkedIn", mail: "Email", theme: "Switch Theme" }
   }
 };

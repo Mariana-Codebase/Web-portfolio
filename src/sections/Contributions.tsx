@@ -164,7 +164,23 @@ const fetchGraphqlReferences = async (
     });
 
     if (!response.ok) break;
-    const payload = await response.json();
+    const payload = (await response.json()) as {
+      data?: {
+        repository?: {
+          pullRequest?: {
+            timelineItems?: {
+              nodes?: Array<{
+                __typename?: string;
+                actor?: { login?: string };
+                source?: { url?: string; author?: { login?: string } };
+                commitUrl?: string;
+              }>;
+              pageInfo?: { hasNextPage?: boolean; endCursor?: string | null };
+            };
+          };
+        };
+      };
+    };
     const timeline = payload?.data?.repository?.pullRequest?.timelineItems;
     const nodes = timeline?.nodes ?? [];
 
@@ -185,7 +201,7 @@ const fetchGraphqlReferences = async (
     }
 
     if (!timeline?.pageInfo?.hasNextPage) break;
-    after = timeline.pageInfo.endCursor;
+    after = timeline.pageInfo.endCursor ?? null;
   }
 
   try {
