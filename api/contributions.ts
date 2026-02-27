@@ -40,7 +40,7 @@ const parseClearCache = (value: string | undefined) => {
 const buildSearchUrl = (user: string, perPage: number, since?: string) => {
   const sinceFilter = since ? ` created:>=${since}` : "";
   const params = new URLSearchParams({
-    q: `author:${user} is:pr${sinceFilter} sort:updated-desc`,
+    q: `author:${user} is:pr is:merged${sinceFilter} sort:updated-desc`,
     per_page: String(perPage)
   });
 
@@ -446,12 +446,8 @@ export default async function handler(req: any, res: any) {
       if (contributions.length >= limit) break;
       if (!item.pull_request?.url) continue;
 
-      const status: "OPEN" | "MERGED" | null =
-        item.state === "open" ? "OPEN" :
-        item.state === "closed" ? "MERGED" :
-        null;
-
-      if (!status) continue;
+      // La búsqueda ya filtra solo PRs mergeados
+      const status: "MERGED" = "MERGED";
 
       const repoUrl = item.repository_url;
       let repoData = repoCache.get(repoUrl);
