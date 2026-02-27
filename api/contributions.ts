@@ -1,5 +1,5 @@
 const DEFAULT_LIMIT = 6;
-const CACHE_TTL_MS = 2 * 60 * 1000;
+const CACHE_TTL_MS = 10 * 60 * 1000;
 const responseCache = new Map<string, { expiresAt: number; data: unknown }>();
 const timelineCache = new Map<string, { expiresAt: number; data: Array<{ url: string; reference: string; author: string; event: string; createdAt?: string }> }>();
 const releaseCache = new Map<string, { expiresAt: number; data: { name?: string; tag?: string; url?: string } | null }>();
