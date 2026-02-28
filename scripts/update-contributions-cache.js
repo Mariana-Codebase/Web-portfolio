@@ -6,13 +6,20 @@
  * Uso: SITE_URL=https://tu-dominio.vercel.app node scripts/update-contributions-cache.js
  */
 
-const fs = require("fs");
-const path = require("path");
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const SITE_URL = process.env.SITE_URL || "https://mariana-dev-portfolio.vercel.app";
+const SITE_URL = process.env.SITE_URL;
 const USER = process.env.GITHUB_USER || "Mariana-Codebase";
+if (!SITE_URL) {
+  console.error("Missing SITE_URL env var");
+  process.exit(1);
+}
 const API_URL = `${SITE_URL.replace(/\/$/, "")}/api/contributions?user=${encodeURIComponent(USER)}&limit=6&includeRefs=0`;
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const CACHE_PATH = path.join(__dirname, "..", "public", "contributions-cache.json");
 
 async function main() {
