@@ -4,7 +4,7 @@ export type Section = 'home' | 'about' | 'certs' | 'projects' | 'contributions';
 
 export interface Project {
   t: string;
-  c: 'WEB' | 'API';
+  c: 'WEB' | 'API'| 'NSM';
   u: string;
   d: { es: string; en: string };
   tags?: string[];
