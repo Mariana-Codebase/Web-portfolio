@@ -50,6 +50,7 @@ export interface Content {
     ALL: string;
     WEB: string;
     MOBILE: string;
+    NSM: string;
     BACKEND: string;
     API: string;
     EDU: string;
