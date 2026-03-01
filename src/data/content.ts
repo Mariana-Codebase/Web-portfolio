@@ -76,7 +76,7 @@ export const DATA = {
   githubLanguages: {} as Record<string, string>,
   githubCategories: {
       "web-portfolio": "WEB",
-      "github-api": "API"
+      "github-api": "API",
       "NSM": "NSM"
   } as Record<string, string>,
   skills: {
