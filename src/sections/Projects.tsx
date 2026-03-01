@@ -20,7 +20,7 @@ type GithubProject = {
 
 type LocalProject = {
   t: string;
-  c: 'WEB' | 'MOBILE' | 'BACKEND' | 'API';
+  c: 'WEB' | 'MOBILE' | 'BACKEND' | 'API' | 'NSM';
   u: string;
   d: { es: string; en: string };
   tags?: string[];
@@ -107,7 +107,7 @@ export const Projects: React.FC<ProjectsProps> = ({ themeColors, projectFilter, 
   });
 
   const projectsToRender: ProjectItem[] = hasGithubData ? githubFiltered : filteredProjects;
-  const categoryOrder: Array<keyof typeof t.categories> = ['WEB', 'MOBILE', 'BACKEND', 'API', 'EDU', 'CERT', 'INTERN'];
+  const categoryOrder: Array<keyof typeof t.categories> = ['WEB', 'MOBILE', 'NSM', 'BACKEND', 'API', 'EDU', 'CERT', 'INTERN'];
   const activeCategories = new Set<keyof typeof t.categories>();
 
   if (hasGithubData) {
