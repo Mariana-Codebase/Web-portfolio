@@ -77,6 +77,7 @@ export const DATA = {
   githubCategories: {
       "web-portfolio": "WEB",
       "github-api": "API"
+      "NSM": "NSM"
   } as Record<string, string>,
   skills: {
     secnet: ["CCNAV7", "Network Analysis", "Hardware Security"],
