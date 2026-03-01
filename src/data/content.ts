@@ -120,7 +120,7 @@ export const CONTENT: Record<Language, Content> = {
     projectsTitle: "Proyectos_",
     contributionsTitle: "Contribuciones_",
     certsTitle: "Formación_",
-    categories: { ALL: "TODOS", WEB: "WEB", MOBILE: "MÓVIL", BACKEND: "BACKEND", API: "API", EDU: "EDUCACIÓN", CERT: "CERTIFICACIONES", INTERN: "PASANTÍAS" },
+    categories: { ALL: "TODOS", WEB: "WEB", NSM:"NSM", MOBILE: "MÓVIL", BACKEND: "BACKEND", API: "API", EDU: "EDUCACIÓN", CERT: "CERTIFICACIONES", INTERN: "PASANTÍAS" },
     status: "ESTADO: DEFENDER MODE",
     designedBy: "Diseñado y creado por",
     tooltips: { github: "GitHub", linkedin: "LinkedIn", mail: "Correo", theme: "Cambiar Tema" }
@@ -142,7 +142,7 @@ export const CONTENT: Record<Language, Content> = {
     projectsTitle: "Projects_",
     contributionsTitle: "Contributions_",
     certsTitle: "Education_",
-    categories: { ALL: "ALL", WEB: "WEB", MOBILE: "MOBILE", BACKEND: "BACKEND", API: "API", EDU: "EDUCATION", CERT: "CERTIFICATIONS", INTERN: "INTERNSHIPS" },
+    categories: { ALL: "ALL", WEB: "WEB", NSM:"NSM", MOBILE: "MOBILE", BACKEND: "BACKEND", API: "API", EDU: "EDUCATION", CERT: "CERTIFICATIONS", INTERN: "INTERNSHIPS" },
     status: "STATUS: DEFENDER MODE",
     designedBy: "Designed and created by",
     tooltips: { github: "GitHub", linkedin: "LinkedIn", mail: "Email", theme: "Switch Theme" }
