@@ -4,7 +4,7 @@ import { CONTENT, DATA } from '../data/content';
 import { useApp } from '../context/AppContext';
 
 type Contribution = {
-  status: 'OPEN' | 'MERGED';
+  status: 'OPEN' | 'MERGED' | 'CLOSED';
   project: string;
   title: string;
   stars: number;
@@ -13,6 +13,12 @@ type Contribution = {
   owner?: string;
   references?: Array<{ url: string; reference: string; author: string; event: string }>;
   release?: { name?: string; tag?: string; url?: string } | null;
+  note?: {
+    author: string;
+    text: string;
+    mentions?: string[];
+    commit?: { sha: string; title: string; url: string } | null;
+  } | null;
 };
 
 const CONTRIBUTIONS_LIMIT = 6;
@@ -42,9 +48,15 @@ const mapContributions = (items: Array<{
   owner?: string;
   references?: Array<{ url: string; reference: string; author: string; event: string }>;
   release?: { name?: string; tag?: string; url?: string } | null;
+  note?: {
+    author?: string;
+    text?: string;
+    mentions?: string[];
+    commit?: { sha?: string; title?: string; url?: string } | null;
+  } | null;
 }>): Contribution[] => {
   return items
-    .filter((item) => item.status === 'OPEN' || item.status === 'MERGED')
+    .filter((item) => item.status === 'OPEN' || item.status === 'MERGED' || item.status === 'CLOSED')
     .map((item) => ({
       status: item.status as Contribution['status'],
       project: item.project,
@@ -54,8 +66,33 @@ const mapContributions = (items: Array<{
       reference: item.reference,
       owner: item.owner,
       references: Array.isArray(item.references) ? item.references : [],
-      release: item.release ?? null
+      release: item.release ?? null,
+      note:
+        item.note && typeof item.note.text === 'string' && item.note.text.trim()
+          ? {
+              author: item.note.author ?? 'unknown',
+              text: item.note.text,
+              mentions: Array.isArray(item.note.mentions) ? item.note.mentions : [],
+              commit:
+                item.note.commit &&
+                typeof item.note.commit.sha === 'string' &&
+                typeof item.note.commit.title === 'string' &&
+                typeof item.note.commit.url === 'string'
+                  ? {
+                      sha: item.note.commit.sha,
+                      title: item.note.commit.title,
+                      url: item.note.commit.url
+                    }
+                  : null
+            }
+          : null
     }));
+};
+
+const mergePinnedContributions = (fetched: Contribution[], previous: Contribution[]) => {
+  const references = new Set(fetched.map((item) => item.reference));
+  const pinned = previous.filter((item) => item.note?.text && !references.has(item.reference));
+  return [...pinned, ...fetched];
 };
 
 const parseOwnerRepoFromUrl = (url: string) => {
@@ -320,6 +357,10 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const since = DATA.contributionsSince;
+  const normalizedStarsByProject = contributions.reduce((acc, item) => {
+    acc.set(item.project.toLowerCase(), item.stars);
+    return acc;
+  }, new Map<string, number>());
 
   useEffect(() => {
     const user = DATA.githubUser;
@@ -344,9 +385,24 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
       const mapped = mapContributions(data.contributions).filter(
         (item) => !item.owner || item.owner.toLowerCase() !== user.toLowerCase()
       );
-      setContributions(mapped);
+      setContributions((prev) => mergePinnedContributions(mapped, prev));
       if (!includeRefs) {
         setIsLoading(false);
+      }
+    };
+
+    const fetchFromStaticCache = async () => {
+      try {
+        const response = await fetch('/contributions-cache.json');
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!isMounted || !Array.isArray(data?.contributions)) return;
+        const mapped = mapContributions(data.contributions).filter(
+          (item) => !item.owner || item.owner.toLowerCase() !== user.toLowerCase()
+        );
+        setContributions((prev) => mergePinnedContributions(mapped, prev));
+      } catch {
+        return;
       }
     };
 
@@ -473,7 +529,7 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
       }
 
       if (!isMounted) return;
-      setContributions(result);
+      setContributions((prev) => mergePinnedContributions(result, prev));
       if (!includeRefs) {
         setIsLoading(false);
       }
@@ -482,6 +538,7 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
     const loadContributions = async () => {
       setIsLoading(true);
       if (import.meta.env.DEV) {
+        await fetchFromStaticCache();
         await fetchFromGithub(false);
         fetchFromGithub(true);
         return;
@@ -533,6 +590,8 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
             {(() => {
               const mentionedRefs = (item.references ?? []).filter((ref) => ref.event === 'mentioned');
               const referencedRefs = (item.references ?? []).filter((ref) => ref.event === 'referenced');
+              const hasSideContent =
+                referencedRefs.length > 0 || mentionedRefs.length > 0 || Boolean(item.note?.text);
               const botNames = new Set(['greptile', 'greptile-apps', 'greptileai']);
               const isBot = (author: string) => {
                 const lower = author.toLowerCase();
@@ -544,16 +603,24 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <span className="inline-flex items-center gap-2 rounded-full bg-purple-600/20 text-purple-200 border border-purple-500/40 px-4 py-2 text-xs font-black uppercase tracking-wider">
+                    <span
+                      className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-black uppercase tracking-wider border ${
+                        item.status === 'MERGED'
+                          ? 'bg-purple-600/20 text-purple-200 border-purple-500/40'
+                          : item.status === 'CLOSED'
+                            ? 'bg-amber-600/20 text-amber-200 border-amber-500/40'
+                            : 'bg-blue-600/20 text-blue-200 border-blue-500/40'
+                      }`}
+                    >
                       <GitPullRequest size={14} />
-                      Merged
+                      {item.status === 'MERGED' ? 'Merged' : item.status === 'CLOSED' ? 'Closed' : 'Open'}
                     </span>
                   </div>
                   <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider ml-4 ${
                     isDarkMode ? 'bg-white/5 text-blue-200' : 'bg-blue-50 text-blue-700'
                   }`}>
                     <Star size={14} />
-                    {item.stars}
+                    {normalizedStarsByProject.get(item.project.toLowerCase()) ?? item.stars}
                   </div>
                 </div>
 
@@ -573,7 +640,7 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                 )}
                 {(() => {
                   const isOpenClaw = item.reference?.toLowerCase().startsWith('openclaw/openclaw');
-                  const release = isOpenClaw ? OPENCLAW_RELEASE : item.release;
+                  const release = item.status === 'MERGED' ? (isOpenClaw ? OPENCLAW_RELEASE : item.release) : null;
                   return release && (release.name || release.tag) ? (
                     <a
                       href={release.url || item.url}
@@ -592,69 +659,117 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                 })()}
               </div>
 
-              {(referencedRefs.length > 0 || mentionedRefs.length > 0) && (
+              {hasSideContent && (
                 <div className="mb-2">
                   <div className="p-0">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <div className={`text-[10px] font-black uppercase tracking-[0.2em] mb-2 ${
-                          isDarkMode ? 'text-neutral-400' : 'text-stone-600'
-                        }`}>
-                          Referenced by
+                    {item.note?.text && (
+                      <div
+                        className={`text-xs leading-relaxed rounded-2xl border px-4 py-3 mb-4 ${
+                          isDarkMode
+                            ? 'bg-white/5 border-white/10 text-neutral-200'
+                            : 'bg-stone-100 border-stone-200 text-stone-700'
+                        }`}
+                      >
+                        <div
+                          className={`text-[10px] font-black uppercase tracking-[0.2em] mb-2 ${
+                            isDarkMode ? 'text-neutral-400' : 'text-stone-600'
+                          }`}
+                        >
+                          @{item.note.author} commented
                         </div>
-                        <div className="space-y-2">
-                          {referencedRefs.map((ref, idx) => (
-                              <a
-                                key={`${ref.url}-${ref.author}-${ref.event}-${idx}`}
-                                href={ref.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className={`block text-sm font-semibold underline-offset-4 hover:underline truncate ${
-                                  isDarkMode ? 'text-neutral-100' : 'text-stone-800'
-                                } break-words leading-relaxed`}
+                        <div className="font-semibold whitespace-pre-line break-words">{item.note.text}</div>
+                        {Array.isArray(item.note.mentions) && item.note.mentions.length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {item.note.mentions.map((mention) => (
+                              <span
+                                key={mention}
+                                className={`text-[10px] font-black px-2 py-1 rounded-full border ${
+                                  isDarkMode
+                                    ? 'border-white/15 text-neutral-100 bg-white/5'
+                                    : 'border-stone-300 text-stone-700 bg-white'
+                                }`}
                               >
-                                @{ref.author}
-                                {isBot(ref.author) && (
-                                  <span className={`ml-2 text-[9px] font-black uppercase tracking-widest ${
-                                    isDarkMode ? 'text-emerald-300' : 'text-emerald-600'
-                                  }`}>
-                                    BOT
-                                  </span>
-                                )}
-                              </a>
+                                {mention}
+                              </span>
                             ))}
+                          </div>
+                        )}
+                        {item.note.commit && (
+                          <a
+                            href={item.note.commit.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={`mt-3 block text-xs font-semibold underline-offset-4 hover:underline ${
+                              isDarkMode ? 'text-blue-300' : 'text-blue-700'
+                            }`}
+                          >
+                            Referenced commit {item.note.commit.sha}: {item.note.commit.title}
+                          </a>
+                        )}
+                      </div>
+                    )}
+                    {(referencedRefs.length > 0 || mentionedRefs.length > 0) && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <div className={`text-[10px] font-black uppercase tracking-[0.2em] mb-2 ${
+                            isDarkMode ? 'text-neutral-400' : 'text-stone-600'
+                          }`}>
+                            Referenced by
+                          </div>
+                          <div className="space-y-2">
+                            {referencedRefs.map((ref, idx) => (
+                                <a
+                                  key={`${ref.url}-${ref.author}-${ref.event}-${idx}`}
+                                  href={ref.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={`block text-sm font-semibold underline-offset-4 hover:underline truncate ${
+                                    isDarkMode ? 'text-neutral-100' : 'text-stone-800'
+                                  } break-words leading-relaxed`}
+                                >
+                                  @{ref.author}
+                                  {isBot(ref.author) && (
+                                    <span className={`ml-2 text-[9px] font-black uppercase tracking-widest ${
+                                      isDarkMode ? 'text-emerald-300' : 'text-emerald-600'
+                                    }`}>
+                                      BOT
+                                    </span>
+                                  )}
+                                </a>
+                              ))}
+                          </div>
+                        </div>
+                        <div>
+                          <div className={`text-[10px] font-black uppercase tracking-[0.2em] mb-2 ${
+                            isDarkMode ? 'text-neutral-400' : 'text-stone-600'
+                          }`}>
+                            Mentioned by
+                          </div>
+                          <div className="space-y-2">
+                            {mentionedRefs.map((ref, idx) => (
+                                <a
+                                  key={`${ref.url}-${ref.author}-${ref.event}-${idx}`}
+                                  href={ref.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={`block text-sm font-semibold underline-offset-4 hover:underline truncate ${
+                                    isDarkMode ? 'text-neutral-100' : 'text-stone-800'
+                                  } break-words leading-relaxed`}
+                                >
+                                  @{ref.author}
+                                  {isBot(ref.author) && (
+                                    <span className={`ml-2 text-[9px] font-black uppercase tracking-widest ${
+                                      isDarkMode ? 'text-emerald-300' : 'text-emerald-600'
+                                    }`}>
+                                      BOT
+                                    </span>
+                                  )}
+                                </a>
+                              ))}
+                          </div>
                         </div>
                       </div>
-                      <div>
-                        <div className={`text-[10px] font-black uppercase tracking-[0.2em] mb-2 ${
-                          isDarkMode ? 'text-neutral-400' : 'text-stone-600'
-                        }`}>
-                          Mentioned by
-                        </div>
-                        <div className="space-y-2">
-                          {mentionedRefs.map((ref, idx) => (
-                              <a
-                                key={`${ref.url}-${ref.author}-${ref.event}-${idx}`}
-                                href={ref.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className={`block text-sm font-semibold underline-offset-4 hover:underline truncate ${
-                                  isDarkMode ? 'text-neutral-100' : 'text-stone-800'
-                                } break-words leading-relaxed`}
-                              >
-                                @{ref.author}
-                                {isBot(ref.author) && (
-                                  <span className={`ml-2 text-[9px] font-black uppercase tracking-widest ${
-                                    isDarkMode ? 'text-emerald-300' : 'text-emerald-600'
-                                  }`}>
-                                    BOT
-                                  </span>
-                                )}
-                              </a>
-                            ))}
-                        </div>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               )}
