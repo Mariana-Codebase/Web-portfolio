@@ -18,6 +18,7 @@ type Contribution = {
     text: string;
     mentions?: string[];
     commit?: { sha: string; title: string; url: string } | null;
+    comments?: Array<{ author: string; text: string }>;
   } | null;
 };
 
@@ -25,6 +26,12 @@ const CONTRIBUTIONS_LIMIT = 6;
 const SEARCH_PAGE_SIZE = 12;
 
 const OPENCLAW_RELEASE = {
+  name: 'openclaw 2026.3.1',
+  tag: 'v2026.3.1',
+  url: 'https://github.com/openclaw/openclaw/releases/tag/v2026.3.1'
+};
+
+const OPENCLAW_RELEASE_18685 = {
   name: 'openclaw 2026.2.24',
   tag: 'v2026.2.24',
   url: 'https://github.com/openclaw/openclaw/releases/tag/v2026.2.24'
@@ -53,6 +60,7 @@ const mapContributions = (items: Array<{
     text?: string;
     mentions?: string[];
     commit?: { sha?: string; title?: string; url?: string } | null;
+    comments?: Array<{ author?: string; text?: string }>;
   } | null;
 }>): Contribution[] => {
   return items
@@ -83,16 +91,42 @@ const mapContributions = (items: Array<{
                       title: item.note.commit.title,
                       url: item.note.commit.url
                     }
-                  : null
+                  : null,
+              comments: Array.isArray(item.note.comments)
+                ? item.note.comments
+                    .filter(
+                      (comment) =>
+                        typeof comment?.author === 'string' &&
+                        comment.author.trim().length > 0 &&
+                        typeof comment?.text === 'string' &&
+                        comment.text.trim().length > 0
+                    )
+                    .map((comment) => ({ author: comment.author as string, text: comment.text as string }))
+                : []
             }
           : null
     }));
 };
 
 const mergePinnedContributions = (fetched: Contribution[], previous: Contribution[]) => {
-  const references = new Set(fetched.map((item) => item.reference));
+  const previousByReference = new Map(previous.map((item) => [item.reference, item]));
+  const hydratedFetched = fetched.map((item) => {
+    const prev = previousByReference.get(item.reference);
+    if (!prev?.note?.text) return item;
+
+    return {
+      ...item,
+      status: prev.status === 'CLOSED' ? 'CLOSED' : item.status,
+      stars: item.stars || prev.stars,
+      note: prev.note ?? item.note,
+      references: item.references && item.references.length > 0 ? item.references : (prev.references ?? []),
+      release: item.release ?? prev.release ?? null
+    };
+  });
+
+  const references = new Set(hydratedFetched.map((item) => item.reference));
   const pinned = previous.filter((item) => item.note?.text && !references.has(item.reference));
-  return [...pinned, ...fetched];
+  return [...pinned, ...hydratedFetched];
 };
 
 const parseOwnerRepoFromUrl = (url: string) => {
@@ -407,11 +441,7 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
     };
 
     const fetchFromGithub = async (includeRefs: boolean) => {
-      const token = import.meta.env.VITE_GITHUB_TOKEN as string | undefined;
       const headers: Record<string, string> = { Accept: 'application/vnd.github+json' };
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
-      }
       const sinceQuery = since ? `+created:>=${encodeURIComponent(since)}` : '';
       const response = await fetch(
         `https://api.github.com/search/issues?q=author:${encodeURIComponent(user)}+is:pr${sinceQuery}+sort:updated-desc&per_page=${SEARCH_PAGE_SIZE}`,
@@ -588,15 +618,50 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
             className={`group ${themeColors.cardBg} border ${themeColors.cardBorder} p-5 md:p-6 rounded-[2.5rem] hover:border-blue-600 transition-all duration-500 flex flex-col justify-between w-full`}
           >
             {(() => {
-              const mentionedRefs = (item.references ?? []).filter((ref) => ref.event === 'mentioned');
-              const referencedRefs = (item.references ?? []).filter((ref) => ref.event === 'referenced');
+              const baseMentionedRefs = (item.references ?? []).filter((ref) => ref.event === 'mentioned');
+              const baseReferencedRefs = (item.references ?? []).filter((ref) => ref.event === 'referenced');
+              const mentionedAuthorSet = new Set(baseMentionedRefs.map((ref) => ref.author.toLowerCase()));
+              const referencedAuthorSet = new Set(baseReferencedRefs.map((ref) => ref.author.toLowerCase()));
+              const noteMentions = (item.note?.mentions ?? []).map((mention) => mention.replace(/^@/, ''));
+              const currentUser = DATA.githubUser.toLowerCase();
+              const syntheticMentionedRefs = noteMentions
+                .filter(
+                  (author) =>
+                    author &&
+                    author.toLowerCase() !== currentUser &&
+                    !mentionedAuthorSet.has(author.toLowerCase())
+                )
+                .map((author) => ({
+                  url: item.url,
+                  reference: item.reference.split('#')[0],
+                  author,
+                  event: 'mentioned' as const
+                }));
+              const syntheticCommitRef =
+                item.note?.commit &&
+                item.note?.author &&
+                !referencedAuthorSet.has(item.note.author.toLowerCase())
+                  ? [{
+                      url: item.note.commit.url,
+                      reference: `${item.reference.split('#')[0]}@${item.note.commit.sha.slice(0, 7)}`,
+                      author: item.note.author,
+                      event: 'referenced' as const
+                    }]
+                  : [];
+              const mentionedRefs = [...baseMentionedRefs, ...syntheticMentionedRefs].filter(
+                (ref) => ref.author.toLowerCase() !== currentUser
+              );
+              const referencedRefs = [...baseReferencedRefs, ...syntheticCommitRef];
+              const hasRefs = referencedRefs.length > 0 || mentionedRefs.length > 0;
+              const placeRefsOnLeft = Boolean(item.note?.text);
               const hasSideContent =
-                referencedRefs.length > 0 || mentionedRefs.length > 0 || Boolean(item.note?.text);
+                (hasRefs && !placeRefsOnLeft) || Boolean(item.note?.text);
               const botNames = new Set(['greptile', 'greptile-apps', 'greptileai']);
               const isBot = (author: string) => {
                 const lower = author.toLowerCase();
                 return lower.includes('bot') || botNames.has(lower);
               };
+              const isFounder = (author: string) => author.toLowerCase() === 'steipete';
 
               return (
             <div className="md:grid md:grid-cols-[220px_1fr] lg:grid-cols-[250px_1fr] md:gap-6">
@@ -640,7 +705,9 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                 )}
                 {(() => {
                   const isOpenClaw = item.reference?.toLowerCase().startsWith('openclaw/openclaw');
-                  const release = item.status === 'MERGED' ? (isOpenClaw ? OPENCLAW_RELEASE : item.release) : null;
+                  const isPr29198 = item.reference?.toLowerCase() === 'openclaw/openclaw#29198';
+                  const openclawRelease = isPr29198 ? (item.release ?? OPENCLAW_RELEASE) : OPENCLAW_RELEASE_18685;
+                  const release = item.status !== 'OPEN' ? (isOpenClaw ? openclawRelease : item.release) : null;
                   return release && (release.name || release.tag) ? (
                     <a
                       href={release.url || item.url}
@@ -657,6 +724,94 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                     </a>
                   ) : null;
                 })()}
+                {placeRefsOnLeft && hasRefs && (
+                  <div className="mt-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <div className={`text-[10px] font-black uppercase tracking-[0.2em] mb-2 ${
+                          isDarkMode ? 'text-neutral-400' : 'text-stone-600'
+                        }`}>
+                          Committed / Referenced by
+                        </div>
+                        <div className="space-y-2">
+                          {referencedRefs.map((ref, idx) => (
+                            <a
+                              key={`${ref.url}-${ref.author}-${ref.event}-${idx}`}
+                              href={ref.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`block text-sm font-semibold underline-offset-4 hover:underline truncate ${
+                                isFounder(ref.author)
+                                  ? (isDarkMode ? 'text-amber-300' : 'text-amber-700')
+                                  : (isDarkMode ? 'text-neutral-100' : 'text-stone-800')
+                              } break-words leading-relaxed`}
+                            >
+                              @{ref.author}
+                              {isFounder(ref.author) && (
+                                <span className={`ml-2 text-[9px] font-black uppercase tracking-widest ${
+                                  isDarkMode ? 'text-amber-300' : 'text-amber-700'
+                                }`}>
+                                  <span className="inline-flex items-center gap-1 align-[-2px]">
+                                    <img src="/VERIFIED.PNG" alt="Verified" className="inline-block w-3.5 h-3.5" />
+                                    <span aria-hidden="true">🦞</span>
+                                  </span>
+                                </span>
+                              )}
+                              {isBot(ref.author) && (
+                                <span className={`ml-2 text-[9px] font-black uppercase tracking-widest ${
+                                  isDarkMode ? 'text-emerald-300' : 'text-emerald-600'
+                                }`}>
+                                  BOT
+                                </span>
+                              )}
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <div className={`text-[10px] font-black uppercase tracking-[0.2em] mb-2 ${
+                          isDarkMode ? 'text-neutral-400' : 'text-stone-600'
+                        }`}>
+                          Mentioned by
+                        </div>
+                        <div className="space-y-2">
+                          {mentionedRefs.map((ref, idx) => (
+                            <a
+                              key={`${ref.url}-${ref.author}-${ref.event}-${idx}`}
+                              href={ref.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`block text-sm font-semibold underline-offset-4 hover:underline truncate ${
+                                isFounder(ref.author)
+                                  ? (isDarkMode ? 'text-amber-300' : 'text-amber-700')
+                                  : (isDarkMode ? 'text-neutral-100' : 'text-stone-800')
+                              } break-words leading-relaxed`}
+                            >
+                              @{ref.author}
+                              {isFounder(ref.author) && (
+                                <span className={`ml-2 text-[9px] font-black uppercase tracking-widest ${
+                                  isDarkMode ? 'text-amber-300' : 'text-amber-700'
+                                }`}>
+                                  <span className="inline-flex items-center gap-1 align-[-2px]">
+                                    <img src="/VERIFIED.PNG" alt="Verified" className="inline-block w-3.5 h-3.5" />
+                                    <span aria-hidden="true">🦞</span>
+                                  </span>
+                                </span>
+                              )}
+                              {isBot(ref.author) && (
+                                <span className={`ml-2 text-[9px] font-black uppercase tracking-widest ${
+                                  isDarkMode ? 'text-emerald-300' : 'text-emerald-600'
+                                }`}>
+                                  BOT
+                                </span>
+                              )}
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {hasSideContent && (
@@ -670,45 +825,95 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                             : 'bg-stone-100 border-stone-200 text-stone-700'
                         }`}
                       >
-                        <div
-                          className={`text-[10px] font-black uppercase tracking-[0.2em] mb-2 ${
-                            isDarkMode ? 'text-neutral-400' : 'text-stone-600'
-                          }`}
-                        >
-                          @{item.note.author} commented
-                        </div>
-                        <div className="font-semibold whitespace-pre-line break-words">{item.note.text}</div>
-                        {Array.isArray(item.note.mentions) && item.note.mentions.length > 0 && (
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            {item.note.mentions.map((mention) => (
-                              <span
-                                key={mention}
-                                className={`text-[10px] font-black px-2 py-1 rounded-full border ${
-                                  isDarkMode
-                                    ? 'border-white/15 text-neutral-100 bg-white/5'
-                                    : 'border-stone-300 text-stone-700 bg-white'
-                                }`}
-                              >
-                                {mention}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                        {item.note.commit && (
-                          <a
-                            href={item.note.commit.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={`mt-3 block text-xs font-semibold underline-offset-4 hover:underline ${
-                              isDarkMode ? 'text-blue-300' : 'text-blue-700'
+                        {(item.note.comments ?? []).map((comment, idx) => (
+                          <div
+                            key={`${comment.author}-${idx}`}
+                            className={`${idx > 0 ? 'mt-4 pt-4 border-t' : ''} ${
+                              isDarkMode ? 'border-white/10' : 'border-stone-200'
                             }`}
                           >
-                            Referenced commit {item.note.commit.sha}: {item.note.commit.title}
-                          </a>
+                            <div
+                              className={`text-[10px] font-black uppercase tracking-[0.2em] mb-2 ${
+                                isDarkMode ? 'text-neutral-400' : 'text-stone-600'
+                              }`}
+                            >
+                              @{comment.author} commented
+                              {isFounder(comment.author) && (
+                                <span className={`ml-2 ${
+                                  isDarkMode ? 'text-amber-300' : 'text-amber-700'
+                                }`}>
+                                  <span className="inline-flex items-center gap-1 align-[-2px]">
+                                    <img src="/VERIFIED.PNG" alt="Verified" className="inline-block w-3.5 h-3.5" />
+                                    <span aria-hidden="true">🦞</span>
+                                  </span>
+                                </span>
+                              )}
+                            </div>
+                            <div className="font-semibold whitespace-pre-line break-words">{comment.text}</div>
+                          </div>
+                        ))}
+                        {(item.note.comments ?? []).length > 0 && (
+                          <div className="mt-5 mb-4">
+                            <div
+                              className={`h-px w-full ${
+                                isDarkMode
+                                  ? 'bg-gradient-to-r from-transparent via-white/30 to-transparent'
+                                  : 'bg-gradient-to-r from-transparent via-stone-500/80 to-transparent'
+                              }`}
+                            />
+                          </div>
                         )}
+                        <div>
+                          <div
+                            className={`text-[10px] font-black uppercase tracking-[0.2em] mb-2 ${
+                              isDarkMode ? 'text-neutral-400' : 'text-stone-600'
+                            }`}
+                          >
+                            @{item.note.author} commented
+                            {isFounder(item.note.author) && (
+                              <span className={`ml-2 ${
+                                isDarkMode ? 'text-amber-300' : 'text-amber-700'
+                              }`}>
+                                <span className="inline-flex items-center gap-1 align-[-2px]">
+                                  <img src="/VERIFIED.PNG" alt="Verified" className="inline-block w-3.5 h-3.5" />
+                                  <span aria-hidden="true">🦞</span>
+                                </span>
+                              </span>
+                            )}
+                          </div>
+                          <div className="font-semibold whitespace-pre-line break-words">{item.note.text}</div>
+                          {Array.isArray(item.note.mentions) && item.note.mentions.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {item.note.mentions.map((mention) => (
+                                <span
+                                  key={mention}
+                                  className={`text-[10px] font-black px-2 py-1 rounded-full border ${
+                                    isDarkMode
+                                      ? 'border-white/15 text-neutral-100 bg-white/5'
+                                      : 'border-stone-300 text-stone-700 bg-white'
+                                  }`}
+                                >
+                                  {mention}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {item.note.commit && (
+                            <a
+                              href={item.note.commit.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`mt-3 block text-xs font-semibold underline-offset-4 hover:underline ${
+                                isDarkMode ? 'text-blue-300' : 'text-blue-700'
+                              }`}
+                            >
+                              Referenced commit {item.note.commit.sha}: {item.note.commit.title}
+                            </a>
+                          )}
+                        </div>
                       </div>
                     )}
-                    {(referencedRefs.length > 0 || mentionedRefs.length > 0) && (
+                    {!placeRefsOnLeft && (referencedRefs.length > 0 || mentionedRefs.length > 0) && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <div className={`text-[10px] font-black uppercase tracking-[0.2em] mb-2 ${
@@ -724,10 +929,22 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className={`block text-sm font-semibold underline-offset-4 hover:underline truncate ${
-                                    isDarkMode ? 'text-neutral-100' : 'text-stone-800'
+                                    isFounder(ref.author)
+                                      ? (isDarkMode ? 'text-amber-300' : 'text-amber-700')
+                                      : (isDarkMode ? 'text-neutral-100' : 'text-stone-800')
                                   } break-words leading-relaxed`}
                                 >
                                   @{ref.author}
+                                  {isFounder(ref.author) && (
+                                    <span className={`ml-2 text-[9px] font-black uppercase tracking-widest ${
+                                      isDarkMode ? 'text-amber-300' : 'text-amber-700'
+                                    }`}>
+                                      <span className="inline-flex items-center gap-1 align-[-2px]">
+                                        <img src="/VERIFIED.PNG" alt="Verified" className="inline-block w-3.5 h-3.5" />
+                                        <span aria-hidden="true">🦞</span>
+                                      </span>
+                                    </span>
+                                  )}
                                   {isBot(ref.author) && (
                                     <span className={`ml-2 text-[9px] font-black uppercase tracking-widest ${
                                       isDarkMode ? 'text-emerald-300' : 'text-emerald-600'
@@ -753,10 +970,22 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className={`block text-sm font-semibold underline-offset-4 hover:underline truncate ${
-                                    isDarkMode ? 'text-neutral-100' : 'text-stone-800'
+                                    isFounder(ref.author)
+                                      ? (isDarkMode ? 'text-amber-300' : 'text-amber-700')
+                                      : (isDarkMode ? 'text-neutral-100' : 'text-stone-800')
                                   } break-words leading-relaxed`}
                                 >
                                   @{ref.author}
+                                  {isFounder(ref.author) && (
+                                    <span className={`ml-2 text-[9px] font-black uppercase tracking-widest ${
+                                      isDarkMode ? 'text-amber-300' : 'text-amber-700'
+                                    }`}>
+                                      <span className="inline-flex items-center gap-1 align-[-2px]">
+                                        <img src="/VERIFIED.PNG" alt="Verified" className="inline-block w-3.5 h-3.5" />
+                                        <span aria-hidden="true">🦞</span>
+                                      </span>
+                                    </span>
+                                  )}
                                   {isBot(ref.author) && (
                                     <span className={`ml-2 text-[9px] font-black uppercase tracking-widest ${
                                       isDarkMode ? 'text-emerald-300' : 'text-emerald-600'

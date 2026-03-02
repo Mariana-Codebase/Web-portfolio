@@ -107,7 +107,7 @@ export const DATA = {
 export const CONTENT: Record<Language, Content> = {
   es: {
     role: "Estudiante de Ingeniería Informática orientada a ciberseguridad",
-    bio: "Enfocada en la intersección entre código, infraestructura y seguridad. Especializada en construir herramientas en Python para automatizar flujos de trabajo de seguridad y he contribuido parches de seguridad de nivel producción al ecosistema OpenClaw (v2026.2.24). Certificada CCNA, con un profundo interés en el análisis de redes y la seguridad de hardware. Actualmente evolucionando de builder a defender.",
+    bio: "Enfocada en la intersección entre código, infraestructura y seguridad. Construyo herramientas en Python para automatizar flujos de seguridad y actualmente contribuyo a la arquitectura de seguridad core de OpenClaw, que actualmente es el proyecto open source de más rápido crecimiento en la historia. Con parches de nivel producción en v2026.2.24 y v2026.3.1, mi trabajo reciente en hardening de gateway fue integrado manualmente por el fundador del proyecto, validando el impacto de mi código en infraestructura global.",
     nav: { home: "INICIO", about: "PERFIL", certs: "FORMACIÓN", projects: "PROYECTOS", contributions: "CONTRIBUCIONES" },
     profileTitle: "/ Perfil Profesional",
     profileSlogan: "Código, infraestructura y seguridad.",
@@ -129,7 +129,7 @@ export const CONTENT: Record<Language, Content> = {
   },
   en: {
     role: "Computer Engineering student focused on security",
-    bio: "Focused on the intersection of code, infrastructure, and security. I build Python-based tools to automate security workflows and have contributed production-level security patches to the OpenClaw ecosystem (v2026.2.24). CCNA certified with a deep interest in network analysis and hardware security. Currently evolving from a builder to a defender.",
+    bio: "Focused on the intersection of code, infrastructure, and security. I build Python-based tools to automate security workflows and currently contribute core security architecture to OpenClaw, which is currently the fastest-growing open-source project in history. With production-level patches in v2026.2.24 and v2026.3.1, my recent work on gateway hardening was manually integrated by the project's founder, validating the impact of my code on global infrastructure.",
     nav: { home: "HOME", about: "PROFILE", certs: "EDUCATION", projects: "PROJECTS", contributions: "CONTRIBUTIONS" },
     profileTitle: "/ Professional Profile",
     profileSlogan: "Securing the digital infrastructure.",

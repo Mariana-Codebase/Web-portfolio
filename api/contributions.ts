@@ -271,10 +271,24 @@ export default async function handler(req: any, res: any) {
   const clearCache = parseClearCache(
     typeof req.query?.clearCache === "string" ? req.query.clearCache : undefined
   );
+  const clearCacheAdminKey =
+    typeof (globalThis as any).process !== "undefined"
+      ? (globalThis as any).process.env?.CLEAR_CACHE_ADMIN_KEY
+      : undefined;
+  const clearCacheHeader = req.headers?.["x-clear-cache-key"];
+  const providedClearCacheKey =
+    typeof clearCacheHeader === "string"
+      ? clearCacheHeader
+      : (Array.isArray(clearCacheHeader) ? clearCacheHeader[0] : undefined);
 
   if (clearCache) {
+    if (!clearCacheAdminKey || providedClearCacheKey !== clearCacheAdminKey) {
+      res.status(403).json({ error: "Forbidden." });
+      return;
+    }
     responseCache.clear();
     timelineCache.clear();
+    releaseCache.clear();
   }
 
   if (!user) {
