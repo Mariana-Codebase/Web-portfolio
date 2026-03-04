@@ -37,6 +37,110 @@ const OPENCLAW_RELEASE_18685 = {
   url: 'https://github.com/openclaw/openclaw/releases/tag/v2026.2.24'
 };
 
+const PR_29198_SUMMARY: Record<'es' | 'en', { issue: string; fix: string }> = {
+  es: {
+    issue:
+      'Identifiqué y resolví una inconsistencia de seguridad en el gateway de OpenClaw donde las rutas registradas por plugins seguían un modelo "fail-open". Aunque las rutas core de la API estaban protegidas, las rutas dinámicas no exigían autenticación obligatoria, lo que generaba un riesgo de bypass para background workers y endpoints de plugins.',
+    fix:
+      'Refactoricé la lógica de autenticación del gateway de OpenClaw para reemplazar el modelo "fail-open" por una arquitectura secure-by-default. Implementé canonical path matching para normalizar URLs entrantes y evitar bypasses por variaciones de mayúsculas o encoding, y apliqué validación obligatoria de gateway-token en todas las rutas de plugins registradas explícitamente. También diseñé un sistema de gating por niveles para asegurar background workers sin romper integraciones webhook que dependen de firmas de terceros.'
+  },
+  en: {
+    issue:
+      'Identified and resolved a security inconsistency in the OpenClaw gateway where plugin-registered routes followed a "fail-open" model. While core API paths were protected, dynamic routes lacked mandatory authentication, creating a bypass risk for background workers and plugin endpoints.',
+    fix:
+      'I refactored the OpenClaw gateway authentication logic to replace a "fail-open" model with a secure-by-default architecture. I implemented canonical path matching to normalize incoming URLs preventing security bypasses via casing or encoding variants and enforced mandatory gateway-token validation across all explicitly registered plugin routes. I also designed a tiered gating system that secures background workers without disrupting webhook integrations that rely on third-party signatures.'
+  }
+};
+
+const PR_18685_SUMMARY: Record<'es' | 'en', { issue: string; fix: string }> = {
+  es: {
+    issue:
+      'La vulnerabilidad estaba en como la interfaz de chat abria imagenes. Al usar window.open sin restricciones, la nueva pestana mantenia una conexion jerarquica con la aplicacion principal mediante window.opener. Esto habilitaba un riesgo serio de Reverse Phishing: la pestana de la imagen podia redirigir maliciosamente la pestana original a una URL fraudulenta, como una pagina falsa de login, sin que el usuario lo notara. Eso podia terminar en robo de sesiones o tokens sensibles.',
+    fix:
+      'Implemente medidas de seguridad en el componente de renderizado del chat (ui/src/ui/chat/grouped-render.ts) para neutralizar la comunicacion entre pestanas y garantizar aislamiento estricto de contexto. Agregue noopener y noreferrer al proceso de apertura de ventanas, asegurando que la nueva pestana se ejecute en un proceso separado sin acceso al contexto de la pestana origen. Ademas, force explicitamente window.opener = null para eliminar cualquier enlace tecnico remanente. El resultado es la eliminacion completa del vector de redireccion maliciosa, garantizando que la pestana de imagen no tenga privilegios ni capacidad de manipulacion sobre la aplicacion principal de OpenClaw.'
+  },
+  en: {
+    issue:
+      'The vulnerability was rooted in how the chat interface managed opening images. By using the standard window.open function without restrictions, the newly opened tab maintained a hierarchical connection to the main application through the window.opener object. This created a significant security risk where an attacker could exploit this relationship to perform a Reverse Phishing attack. Specifically, the image tab could maliciously redirect the original application tab to a fraudulent URL, such as a fake login page, without the user noticing. This could lead to the direct theft of session credentials or sensitive access tokens.',
+    fix:
+      'I implemented security measures within the chat rendering component (ui/src/ui/chat/grouped-render.ts) to neutralize all cross-tab communication and ensure strict context isolation. I added the noopener and noreferrer directives to the window opening process, ensuring the new tab runs in a separate process without access to the source tab context. Furthermore, I explicitly forced window.opener = null to eliminate any remaining technical links. The result is the complete elimination of the malicious redirection attack vector, ensuring the image tab has no privileges or manipulation capabilities over the main OpenClaw application.'
+  }
+};
+
+const PR_29198_COMMIT_URL = 'https://github.com/openclaw/openclaw/commit/53d10f868';
+
+const OPENCLAW_DESCRIPTION: Record<
+  'es' | 'en',
+  {
+    intro: string;
+    achievementsTitle: string;
+    achievements: string;
+    privacyTitle: string;
+    privacy: string;
+  }
+> = {
+  es: {
+    intro:
+      'OpenClaw es un sistema de IA de codigo abierto con arquitectura local-first, disenado para actuar como un agente autonomo dentro del sistema operativo. Desarrollado por Peter Steinberger (@steipete). A diferencia de un modelo de lenguaje convencional, OpenClaw posee capacidades de ejecucion agentica, lo que le permite interactuar directamente con el sistema de archivos, operar la terminal de comandos y automatizar tareas complejas de desarrollo de software.',
+    achievementsTitle: 'Logros',
+    achievements:
+      'Record historico en GitHub: se convirtio en el proyecto open source con el crecimiento mas rapido de la historia. En apenas unos meses de 2026, supero las 250,000 estrellas, rebasando la popularidad de pilares de la industria como Linux y React.',
+    privacyTitle: 'Privacidad',
+    privacy:
+      'OpenClaw prioriza la ejecucion local. Esto es fundamental para la seguridad y soberania de datos.'
+  },
+  en: {
+    intro:
+      'OpenClaw is an open-source AI system with a local-first architecture, designed to act as an autonomous agent inside the operating system. It is developed by Peter Steinberger (@steipete). Unlike a conventional language model, OpenClaw has agentic execution capabilities, allowing it to interact directly with the file system, operate the command terminal, and automate complex software development tasks.',
+    achievementsTitle: 'Achievements',
+    achievements:
+      'Historic GitHub record: it became the fastest-growing open-source project in history. In just a few months of 2026, it surpassed 250,000 stars, overtaking major industry pillars such as Linux and React.',
+    privacyTitle: 'Privacy',
+    privacy:
+      'OpenClaw prioritizes local execution. This is essential for data security and sovereignty.'
+  }
+};
+
+const OPENCLAW_SECTION_TEXT: Record<
+  'es' | 'en',
+  {
+    whatIsOpenClaw: string;
+    whatIDid: string;
+    whatIIdentified: string;
+    whatIDidToFixIt: string;
+    whereCanIFindIt: string;
+    whereDescription: string;
+    release: string;
+    pullRequest: string;
+    referencedCommit: string;
+  }
+> = {
+  es: {
+    whatIsOpenClaw: 'Que es OpenClaw',
+    whatIDid: 'Que hice',
+    whatIIdentified: 'Que identifique',
+    whatIDidToFixIt: 'Que hice para solucionarlo',
+    whereCanIFindIt: 'Donde lo puedo encontrar',
+    whereDescription:
+      'Este fix fue agregado manualmente como parte del gateway access/auth/config migration cluster en el release openclaw 2026.3.1.',
+    release: 'Release',
+    pullRequest: 'Pull request',
+    referencedCommit: 'Tambien referenciado en el commit'
+  },
+  en: {
+    whatIsOpenClaw: 'What is OpenClaw',
+    whatIDid: 'What I did',
+    whatIIdentified: 'What I identified',
+    whatIDidToFixIt: 'What I did to fix it',
+    whereCanIFindIt: 'Where can I find it',
+    whereDescription:
+      'This fix was manually added as part of the gateway access/auth/config migration cluster on the release openclaw 2026.3.1.',
+    release: 'Release',
+    pullRequest: 'Pull request',
+    referencedCommit: 'Also referenced on commit'
+  }
+};
+
 interface ContributionsProps {
   themeColors: {
     cardBg: string;
@@ -387,6 +491,7 @@ const fetchTimelineReferences = async (
 export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => {
   const { language, isDarkMode } = useApp();
   const t = CONTENT[language];
+  const openclawText = OPENCLAW_SECTION_TEXT[language];
   const [contributions, setContributions] = useState<Contribution[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -652,15 +757,38 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                 (ref) => ref.author.toLowerCase() !== currentUser
               );
               const referencedRefs = [...baseReferencedRefs, ...syntheticCommitRef];
+              const referencedCount = referencedRefs.length;
+              const mentionedCount = mentionedRefs.length;
               const hasRefs = referencedRefs.length > 0 || mentionedRefs.length > 0;
-              const placeRefsOnLeft = Boolean(item.note?.text);
-              const hasSideContent =
-                (hasRefs && !placeRefsOnLeft) || Boolean(item.note?.text);
-              const botNames = new Set(['greptile', 'greptile-apps', 'greptileai']);
-              const isBot = (author: string) => {
-                const lower = author.toLowerCase();
-                return lower.includes('bot') || botNames.has(lower);
-              };
+              const noteComments = item.note?.comments ?? [];
+              const hasAnyComments = noteComments.length > 0 || Boolean(item.note?.text);
+              const isOpenClawContribution = item.reference?.toLowerCase().startsWith('openclaw/openclaw');
+              const isPr29198 = item.reference?.toLowerCase() === 'openclaw/openclaw#29198';
+              const isPr18685 = item.reference?.toLowerCase() === 'openclaw/openclaw#18685';
+              const isSpecialOpenClawPr = isPr29198 || isPr18685;
+              const specialPrTitle = isPr29198
+                ? 'Gateway: require auth on all plugin HTTP routes'
+                : isPr18685
+                  ? 'fix(ui): prevent tabnabbing in chat images'
+                  : null;
+              const specialPrSummary = isPr29198
+                ? PR_29198_SUMMARY[language]
+                : isPr18685
+                  ? PR_18685_SUMMARY[language]
+                  : null;
+              const specialPrRelease = isPr29198 ? OPENCLAW_RELEASE : isPr18685 ? OPENCLAW_RELEASE_18685 : null;
+              const specialPrWhereText = isPr29198
+                ? openclawText.whereDescription
+                : language === 'es'
+                  ? 'Este fix se encuentra en el release openclaw 2026.2.24 y corresponde al hardening de seguridad para la apertura de imagenes en chat.'
+                  : 'This fix is included in the openclaw 2026.2.24 release and corresponds to security hardening for opening chat images.';
+              const specialPrLabel = isPr29198
+                ? '@PR 29198: openclaw/openclaw'
+                : isPr18685
+                  ? '@PR 18685: openclaw/openclaw'
+                  : '';
+              const specialPrCommitUrl = isPr29198 ? PR_29198_COMMIT_URL : null;
+              const hasSideContent = hasRefs || hasAnyComments || isOpenClawContribution;
               const isFounder = (author: string) => author.toLowerCase() === 'steipete';
 
               return (
@@ -698,303 +826,271 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                     {language === 'es' ? '@PR' : '@PR'} {item.reference.split('#')[1]}: {item.reference.split('#')[0]}
                   </div>
                 </div>
-                {item.title && (
+                {item.title && !isSpecialOpenClawPr && (
                   <div className="text-sm font-semibold tracking-tight text-left mb-3">
                     {item.title}
                   </div>
                 )}
                 {(() => {
-                  const isOpenClaw = item.reference?.toLowerCase().startsWith('openclaw/openclaw');
-                  const isPr29198 = item.reference?.toLowerCase() === 'openclaw/openclaw#29198';
                   const openclawRelease = isPr29198 ? (item.release ?? OPENCLAW_RELEASE) : OPENCLAW_RELEASE_18685;
-                  const release = item.status !== 'OPEN' ? (isOpenClaw ? openclawRelease : item.release) : null;
-                  return release && (release.name || release.tag) ? (
-                    <a
-                      href={release.url || item.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] mb-3 ${
-                        isDarkMode ? 'text-emerald-300' : 'text-emerald-700'
-                      }`}
-                    >
-                      <span>Release</span>
-                      <span className={isDarkMode ? 'text-neutral-200' : 'text-stone-700'}>
-                        {release.name || release.tag}
-                      </span>
-                    </a>
-                  ) : null;
+                  const release = item.status !== 'OPEN' ? (isOpenClawContribution ? openclawRelease : item.release) : null;
+                  return (
+                    <>
+                      {release && (release.name || release.tag) && (
+                        <a
+                          href={release.url || item.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] mb-3 ${
+                            isDarkMode ? 'text-emerald-300' : 'text-emerald-700'
+                          }`}
+                        >
+                          <span>Release</span>
+                          <span className={isDarkMode ? 'text-neutral-200' : 'text-stone-700'}>
+                            {release.name || release.tag}
+                          </span>
+                        </a>
+                      )}
+                      {hasAnyComments && (
+                        <div
+                          className={`text-xs leading-relaxed rounded-2xl border px-4 py-3 mb-4 ${
+                            isDarkMode
+                              ? 'bg-white/5 border-white/10 text-neutral-200'
+                              : 'bg-stone-100 border-stone-200 text-stone-700'
+                          }`}
+                        >
+                          <div
+                            className={`text-[10px] font-black uppercase tracking-[0.2em] mb-3 ${
+                              isDarkMode ? 'text-neutral-400' : 'text-stone-600'
+                            }`}
+                          >
+                            Comments
+                          </div>
+                          <div className="space-y-3">
+                            {[
+                              ...(item.note?.text
+                                ? [{
+                                    author: item.note.author,
+                                    text: item.note.text,
+                                    mentions: item.note.mentions ?? [],
+                                    commit: item.note.commit ?? null
+                                  }]
+                                : []),
+                              ...noteComments.map((comment) => ({
+                                author: comment.author,
+                                text: comment.text,
+                                mentions: [] as string[],
+                                commit: null as { sha: string; title: string; url: string } | null
+                              }))
+                            ].map((comment, idx) => (
+                              <details
+                                key={`${comment.author}-${idx}`}
+                                className={`rounded-xl border px-3 py-2 ${
+                                  isDarkMode
+                                    ? 'border-white/10 bg-white/5'
+                                    : 'border-stone-300 bg-white'
+                                }`}
+                              >
+                                <summary className="cursor-pointer select-none text-[11px] font-black uppercase tracking-[0.16em]">
+                                  @{comment.author} commented
+                                  {isFounder(comment.author) && (
+                                    <span className={`ml-2 ${
+                                      isDarkMode ? 'text-amber-300' : 'text-amber-700'
+                                    }`}>
+                                      <span className="inline-flex items-center gap-1 align-[-2px]">
+                                        <img src="/VERIFIED.PNG" alt="Verified" className="inline-block w-3.5 h-3.5" />
+                                        <span aria-hidden="true">🦞</span>
+                                      </span>
+                                    </span>
+                                  )}
+                                </summary>
+                                <div className="mt-2 font-semibold whitespace-pre-line break-words">
+                                  {comment.text}
+                                </div>
+                                {Array.isArray(comment.mentions) && comment.mentions.length > 0 && (
+                                  <div className="mt-3 flex flex-wrap gap-2">
+                                    {comment.mentions.map((mention) => (
+                                      <span
+                                        key={`${comment.author}-${mention}`}
+                                        className={`text-[10px] font-black px-2 py-1 rounded-full border ${
+                                          isDarkMode
+                                            ? 'border-white/15 text-neutral-100 bg-white/5'
+                                            : 'border-stone-300 text-stone-700 bg-white'
+                                        }`}
+                                      >
+                                        {mention}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                                {comment.commit && (
+                                  <a
+                                    href={comment.commit.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={`mt-3 block text-xs font-semibold underline-offset-4 hover:underline ${
+                                      isDarkMode ? 'text-blue-300' : 'text-blue-700'
+                                    }`}
+                                  >
+                                    Referenced commit {comment.commit.sha}: {comment.commit.title}
+                                  </a>
+                                )}
+                              </details>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  );
                 })()}
-                {placeRefsOnLeft && hasRefs && (
-                  <div className="mt-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <div className={`text-[10px] font-black uppercase tracking-[0.2em] mb-2 ${
-                          isDarkMode ? 'text-neutral-400' : 'text-stone-600'
-                        }`}>
-                          Committed / Referenced by
-                        </div>
-                        <div className="space-y-2">
-                          {referencedRefs.map((ref, idx) => (
-                            <a
-                              key={`${ref.url}-${ref.author}-${ref.event}-${idx}`}
-                              href={ref.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={`block text-sm font-semibold underline-offset-4 hover:underline truncate ${
-                                isFounder(ref.author)
-                                  ? (isDarkMode ? 'text-amber-300' : 'text-amber-700')
-                                  : (isDarkMode ? 'text-neutral-100' : 'text-stone-800')
-                              } break-words leading-relaxed`}
-                            >
-                              @{ref.author}
-                              {isFounder(ref.author) && (
-                                <span className={`ml-2 text-[9px] font-black uppercase tracking-widest ${
-                                  isDarkMode ? 'text-amber-300' : 'text-amber-700'
-                                }`}>
-                                  <span className="inline-flex items-center gap-1 align-[-2px]">
-                                    <img src="/VERIFIED.PNG" alt="Verified" className="inline-block w-3.5 h-3.5" />
-                                    <span aria-hidden="true">🦞</span>
-                                  </span>
-                                </span>
-                              )}
-                              {isBot(ref.author) && (
-                                <span className={`ml-2 text-[9px] font-black uppercase tracking-widest ${
-                                  isDarkMode ? 'text-emerald-300' : 'text-emerald-600'
-                                }`}>
-                                  BOT
-                                </span>
-                              )}
-                            </a>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <div className={`text-[10px] font-black uppercase tracking-[0.2em] mb-2 ${
-                          isDarkMode ? 'text-neutral-400' : 'text-stone-600'
-                        }`}>
-                          Mentioned by
-                        </div>
-                        <div className="space-y-2">
-                          {mentionedRefs.map((ref, idx) => (
-                            <a
-                              key={`${ref.url}-${ref.author}-${ref.event}-${idx}`}
-                              href={ref.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={`block text-sm font-semibold underline-offset-4 hover:underline truncate ${
-                                isFounder(ref.author)
-                                  ? (isDarkMode ? 'text-amber-300' : 'text-amber-700')
-                                  : (isDarkMode ? 'text-neutral-100' : 'text-stone-800')
-                              } break-words leading-relaxed`}
-                            >
-                              @{ref.author}
-                              {isFounder(ref.author) && (
-                                <span className={`ml-2 text-[9px] font-black uppercase tracking-widest ${
-                                  isDarkMode ? 'text-amber-300' : 'text-amber-700'
-                                }`}>
-                                  <span className="inline-flex items-center gap-1 align-[-2px]">
-                                    <img src="/VERIFIED.PNG" alt="Verified" className="inline-block w-3.5 h-3.5" />
-                                    <span aria-hidden="true">🦞</span>
-                                  </span>
-                                </span>
-                              )}
-                              {isBot(ref.author) && (
-                                <span className={`ml-2 text-[9px] font-black uppercase tracking-widest ${
-                                  isDarkMode ? 'text-emerald-300' : 'text-emerald-600'
-                                }`}>
-                                  BOT
-                                </span>
-                              )}
-                            </a>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
 
               {hasSideContent && (
                 <div className="mb-2">
                   <div className="p-0">
-                    {item.note?.text && (
+                    {specialPrTitle && (
                       <div
-                        className={`text-xs leading-relaxed rounded-2xl border px-4 py-3 mb-4 ${
+                        className={`text-base md:text-lg font-black tracking-tight mb-3 ${
+                          isDarkMode ? 'text-neutral-100' : 'text-stone-900'
+                        }`}
+                      >
+                        {specialPrTitle}
+                      </div>
+                    )}
+                    {isOpenClawContribution && (
+                      <details
+                        className={`rounded-2xl border px-4 py-3 text-xs leading-relaxed mb-4 ${
                           isDarkMode
                             ? 'bg-white/5 border-white/10 text-neutral-200'
                             : 'bg-stone-100 border-stone-200 text-stone-700'
                         }`}
                       >
-                        {(item.note.comments ?? []).map((comment, idx) => (
-                          <div
-                            key={`${comment.author}-${idx}`}
-                            className={`${idx > 0 ? 'mt-4 pt-4 border-t' : ''} ${
-                              isDarkMode ? 'border-white/10' : 'border-stone-200'
-                            }`}
-                          >
+                        <summary className="cursor-pointer select-none font-black uppercase tracking-[0.2em]">
+                          {openclawText.whatIsOpenClaw}
+                        </summary>
+                        <div className="mt-3 space-y-3">
+                          <p className="font-semibold">{OPENCLAW_DESCRIPTION[language].intro}</p>
+                          <div>
+                            <p className="font-black">{OPENCLAW_DESCRIPTION[language].achievementsTitle}</p>
+                            <p className="font-semibold mt-1">{OPENCLAW_DESCRIPTION[language].achievements}</p>
+                          </div>
+                          <div>
+                            <p className="font-black">{OPENCLAW_DESCRIPTION[language].privacyTitle}</p>
+                            <p className="font-semibold mt-1">{OPENCLAW_DESCRIPTION[language].privacy}</p>
+                          </div>
+                        </div>
+                      </details>
+                    )}
+                    {isSpecialOpenClawPr && specialPrSummary && (
+                      <details
+                        className={`rounded-2xl border px-4 py-3 text-xs leading-relaxed mb-4 ${
+                          isDarkMode
+                            ? 'bg-white/5 border-white/10 text-neutral-200'
+                            : 'bg-stone-100 border-stone-200 text-stone-700'
+                        }`}
+                      >
+                        <summary className="cursor-pointer select-none font-black uppercase tracking-[0.2em]">
+                          {openclawText.whatIDid}
+                        </summary>
+                        <div className="mt-3 space-y-3">
+                          <div>
                             <div
-                              className={`text-[10px] font-black uppercase tracking-[0.2em] mb-2 ${
+                              className={`text-[10px] font-black uppercase tracking-[0.2em] mb-1 ${
                                 isDarkMode ? 'text-neutral-400' : 'text-stone-600'
                               }`}
                             >
-                              @{comment.author} commented
-                              {isFounder(comment.author) && (
-                                <span className={`ml-2 ${
-                                  isDarkMode ? 'text-amber-300' : 'text-amber-700'
-                                }`}>
-                                  <span className="inline-flex items-center gap-1 align-[-2px]">
-                                    <img src="/VERIFIED.PNG" alt="Verified" className="inline-block w-3.5 h-3.5" />
-                                    <span aria-hidden="true">🦞</span>
-                                  </span>
-                                </span>
-                              )}
+                              {openclawText.whatIIdentified}
                             </div>
-                            <div className="font-semibold whitespace-pre-line break-words">{comment.text}</div>
+                            <p className="font-semibold">{specialPrSummary.issue}</p>
                           </div>
-                        ))}
-                        {(item.note.comments ?? []).length > 0 && (
-                          <div className="mt-5 mb-4">
+                          <div>
                             <div
-                              className={`h-px w-full ${
-                                isDarkMode
-                                  ? 'bg-gradient-to-r from-transparent via-white/30 to-transparent'
-                                  : 'bg-gradient-to-r from-transparent via-stone-500/80 to-transparent'
+                              className={`text-[10px] font-black uppercase tracking-[0.2em] mb-1 ${
+                                isDarkMode ? 'text-neutral-400' : 'text-stone-600'
                               }`}
-                            />
-                          </div>
-                        )}
-                        <div>
-                          <div
-                            className={`text-[10px] font-black uppercase tracking-[0.2em] mb-2 ${
-                              isDarkMode ? 'text-neutral-400' : 'text-stone-600'
-                            }`}
-                          >
-                            @{item.note.author} commented
-                            {isFounder(item.note.author) && (
-                              <span className={`ml-2 ${
-                                isDarkMode ? 'text-amber-300' : 'text-amber-700'
-                              }`}>
-                                <span className="inline-flex items-center gap-1 align-[-2px]">
-                                  <img src="/VERIFIED.PNG" alt="Verified" className="inline-block w-3.5 h-3.5" />
-                                  <span aria-hidden="true">🦞</span>
-                                </span>
-                              </span>
-                            )}
-                          </div>
-                          <div className="font-semibold whitespace-pre-line break-words">{item.note.text}</div>
-                          {Array.isArray(item.note.mentions) && item.note.mentions.length > 0 && (
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              {item.note.mentions.map((mention) => (
-                                <span
-                                  key={mention}
-                                  className={`text-[10px] font-black px-2 py-1 rounded-full border ${
-                                    isDarkMode
-                                      ? 'border-white/15 text-neutral-100 bg-white/5'
-                                      : 'border-stone-300 text-stone-700 bg-white'
-                                  }`}
-                                >
-                                  {mention}
-                                </span>
-                              ))}
+                            >
+                              {openclawText.whatIDidToFixIt}
                             </div>
-                          )}
-                          {item.note.commit && (
+                            <p className="font-semibold">{specialPrSummary.fix}</p>
+                          </div>
+                        </div>
+                      </details>
+                    )}
+                    {isSpecialOpenClawPr && specialPrRelease && (
+                      <details
+                        className={`rounded-2xl border px-4 py-3 text-xs leading-relaxed mb-4 ${
+                          isDarkMode
+                            ? 'bg-white/5 border-white/10 text-neutral-200'
+                            : 'bg-stone-100 border-stone-200 text-stone-700'
+                        }`}
+                      >
+                        <summary className="cursor-pointer select-none font-black uppercase tracking-[0.2em]">
+                          {openclawText.whereCanIFindIt}
+                        </summary>
+                        <div className="mt-3 space-y-3 font-semibold">
+                          <p>{specialPrWhereText}</p>
+                          <p>
+                            {openclawText.release}: {' '}
                             <a
-                              href={item.note.commit.url}
+                              href={specialPrRelease.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className={`mt-3 block text-xs font-semibold underline-offset-4 hover:underline ${
+                              className={`underline underline-offset-4 ${
                                 isDarkMode ? 'text-blue-300' : 'text-blue-700'
                               }`}
                             >
-                              Referenced commit {item.note.commit.sha}: {item.note.commit.title}
+                              {specialPrRelease.name || specialPrRelease.tag}
                             </a>
+                          </p>
+                          <p>
+                            {openclawText.pullRequest}: {' '}
+                            <a
+                              href={item.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`underline underline-offset-4 ${
+                                isDarkMode ? 'text-blue-300' : 'text-blue-700'
+                              }`}
+                            >
+                              {specialPrLabel}
+                            </a>
+                          </p>
+                          {specialPrCommitUrl && (
+                            <p>
+                              {openclawText.referencedCommit}: {' '}
+                              <a
+                                href={specialPrCommitUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`underline underline-offset-4 ${
+                                  isDarkMode ? 'text-blue-300' : 'text-blue-700'
+                                }`}
+                              >
+                                53d10f868
+                              </a>
+                            </p>
                           )}
                         </div>
-                      </div>
+                      </details>
                     )}
-                    {!placeRefsOnLeft && (referencedRefs.length > 0 || mentionedRefs.length > 0) && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <div className={`text-[10px] font-black uppercase tracking-[0.2em] mb-2 ${
+                    {hasRefs && (
+                      <div className={`mt-4 pt-4 border-t ${isDarkMode ? 'border-white/10' : 'border-stone-200'}`}>
+                        <div className="space-y-2">
+                          <div className={`text-xs font-black uppercase tracking-[0.15em] ${
                             isDarkMode ? 'text-neutral-400' : 'text-stone-600'
                           }`}>
-                            Referenced by
+                            Commits and references:{' '}
+                            <span className={`${isDarkMode ? 'text-neutral-100' : 'text-stone-900'}`}>
+                              {referencedCount}
+                            </span>
                           </div>
-                          <div className="space-y-2">
-                            {referencedRefs.map((ref, idx) => (
-                                <a
-                                  key={`${ref.url}-${ref.author}-${ref.event}-${idx}`}
-                                  href={ref.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className={`block text-sm font-semibold underline-offset-4 hover:underline truncate ${
-                                    isFounder(ref.author)
-                                      ? (isDarkMode ? 'text-amber-300' : 'text-amber-700')
-                                      : (isDarkMode ? 'text-neutral-100' : 'text-stone-800')
-                                  } break-words leading-relaxed`}
-                                >
-                                  @{ref.author}
-                                  {isFounder(ref.author) && (
-                                    <span className={`ml-2 text-[9px] font-black uppercase tracking-widest ${
-                                      isDarkMode ? 'text-amber-300' : 'text-amber-700'
-                                    }`}>
-                                      <span className="inline-flex items-center gap-1 align-[-2px]">
-                                        <img src="/VERIFIED.PNG" alt="Verified" className="inline-block w-3.5 h-3.5" />
-                                        <span aria-hidden="true">🦞</span>
-                                      </span>
-                                    </span>
-                                  )}
-                                  {isBot(ref.author) && (
-                                    <span className={`ml-2 text-[9px] font-black uppercase tracking-widest ${
-                                      isDarkMode ? 'text-emerald-300' : 'text-emerald-600'
-                                    }`}>
-                                      BOT
-                                    </span>
-                                  )}
-                                </a>
-                              ))}
-                          </div>
-                        </div>
-                        <div>
-                          <div className={`text-[10px] font-black uppercase tracking-[0.2em] mb-2 ${
+                          <div className={`text-xs font-black uppercase tracking-[0.15em] ${
                             isDarkMode ? 'text-neutral-400' : 'text-stone-600'
                           }`}>
-                            Mentioned by
-                          </div>
-                          <div className="space-y-2">
-                            {mentionedRefs.map((ref, idx) => (
-                                <a
-                                  key={`${ref.url}-${ref.author}-${ref.event}-${idx}`}
-                                  href={ref.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className={`block text-sm font-semibold underline-offset-4 hover:underline truncate ${
-                                    isFounder(ref.author)
-                                      ? (isDarkMode ? 'text-amber-300' : 'text-amber-700')
-                                      : (isDarkMode ? 'text-neutral-100' : 'text-stone-800')
-                                  } break-words leading-relaxed`}
-                                >
-                                  @{ref.author}
-                                  {isFounder(ref.author) && (
-                                    <span className={`ml-2 text-[9px] font-black uppercase tracking-widest ${
-                                      isDarkMode ? 'text-amber-300' : 'text-amber-700'
-                                    }`}>
-                                      <span className="inline-flex items-center gap-1 align-[-2px]">
-                                        <img src="/VERIFIED.PNG" alt="Verified" className="inline-block w-3.5 h-3.5" />
-                                        <span aria-hidden="true">🦞</span>
-                                      </span>
-                                    </span>
-                                  )}
-                                  {isBot(ref.author) && (
-                                    <span className={`ml-2 text-[9px] font-black uppercase tracking-widest ${
-                                      isDarkMode ? 'text-emerald-300' : 'text-emerald-600'
-                                    }`}>
-                                      BOT
-                                    </span>
-                                  )}
-                                </a>
-                              ))}
+                            Mentions:{' '}
+                            <span className={`${isDarkMode ? 'text-neutral-100' : 'text-stone-900'}`}>
+                              {mentionedCount}
+                            </span>
                           </div>
                         </div>
                       </div>
