@@ -1,0 +1,39 @@
+name: Refresh Contributions Cache
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-cache:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: refresh-contributions-cache
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Refresh cache file
+        env:
+          SITE_URL: ${{ vars.SITE_URL || secrets.SITE_URL }}
+          GITHUB_USER: ${{ vars.GITHUB_USER || secrets.GITHUB_USER }}
+          GITHUB_CONTRIBUTIONS_SINCE: ${{ vars.GITHUB_CONTRIBUTIONS_SINCE || secrets.GITHUB_CONTRIBUTIONS_SINCE }}
+        run: node scripts/update-contributions-cache.js
+
+      - name: Commit updated cache
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/contributions-cache.json
+          git diff --staged --quiet || git commit -m "chore(cache): refresh contributions cache"
+          git push

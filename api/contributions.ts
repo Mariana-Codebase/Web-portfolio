@@ -6,8 +6,26 @@ const CACHE_TTL_MS = 10 * 60 * 1000;
 const responseCache = new Map<string, { expiresAt: number; data: unknown }>();
 const timelineCache = new Map<string, { expiresAt: number; data: Array<{ url: string; reference: string; author: string; event: string; createdAt?: string }> }>();
 const releaseCache = new Map<string, { expiresAt: number; data: { name?: string; tag?: string; url?: string } | null }>();
-const MAX_TIMELINE_PAGES = 1;
-const WITH_REFS_LIMIT = 2;
+const MAX_TIMELINE_PAGES = 5;
+const WITH_REFS_LIMIT = DEFAULT_LIMIT;
+
+type ContributionReference = { url: string; reference: string; author: string; event: string; createdAt?: string };
+type CachedContributionPayload = {
+  user: string;
+  contributions: Array<{
+    status: "OPEN" | "MERGED" | "CLOSED";
+    project: string;
+    title: string;
+    stars: number;
+    url: string;
+    reference: string;
+    owner: string;
+    references: ContributionReference[];
+    release?: { name?: string; tag?: string; url?: string } | null;
+  }>;
+  cachedAt?: string;
+  since?: string;
+};
 
 const parseLimit = (value: string | undefined) => {
   const parsed = Number(value);
@@ -124,6 +142,7 @@ const fetchLatestRelease = async (
 
 const normalizeReferenceEvent = (event: string) => {
   if (event === "mentioned") return "mentioned";
+  if (event === "committed") return "referenced";
   if (event === "cross-referenced" || event === "referenced") return "referenced";
   return "referenced";
 };
@@ -161,6 +180,8 @@ const fetchTimelineReferences = async (
       url?: string;
       commit_id?: string;
       commit_url?: string;
+      sha?: string;
+      html_url?: string;
       created_at?: string;
       actor?: { login?: string };
       user?: { login?: string };
@@ -170,6 +191,12 @@ const fetchTimelineReferences = async (
           number?: number;
           user?: { login?: string };
           pull_request?: Record<string, unknown>;
+        };
+        commit?: {
+          sha?: string;
+          html_url?: string;
+          url?: string;
+          author?: { login?: string };
         };
       };
     }>;
@@ -194,14 +221,41 @@ const fetchTimelineReferences = async (
       if (entry.event === "cross-referenced") {
         const issue = entry.source?.issue;
         const issueUrl = issue?.html_url as string | undefined;
-        const repoInfo = issueUrl ? parseOwnerRepoFromUrl(issueUrl) : null;
+        const sourceCommit = entry.source?.commit;
+        const sourceCommitUrl =
+          sourceCommit?.html_url ??
+          (sourceCommit?.url ? buildCommitHtmlUrl(sourceCommit.url) ?? sourceCommit.url : undefined);
+        const commitRepoInfo = sourceCommitUrl ? parseOwnerRepoFromUrl(sourceCommitUrl) : null;
+        const repoInfo = issueUrl ? parseOwnerRepoFromUrl(issueUrl) : commitRepoInfo;
         const fallbackUrl = buildFallbackPrUrl(owner, repo, issueNumber);
-        const ref = repoInfo
-          ? `${repoInfo.owner}/${repoInfo.repo}#${issue?.number}`
-          : `${owner}/${repo}#${issueNumber}`;
+        const ref = issue?.number
+          ? (repoInfo ? `${repoInfo.owner}/${repoInfo.repo}#${issue.number}` : `${owner}/${repo}#${issue.number}`)
+          : sourceCommit?.sha
+            ? `${repoInfo?.owner ?? owner}/${repoInfo?.repo ?? repo}@${sourceCommit.sha.slice(0, 7)}`
+            : `${owner}/${repo}#${issueNumber}`;
         const event = normalizeReferenceEvent("cross-referenced");
         references.push({
-          url: issueUrl ?? fallbackUrl,
+          url: issueUrl ?? sourceCommitUrl ?? fallbackUrl,
+          reference: ref,
+          author: actor,
+          event,
+          createdAt: entry.created_at
+        });
+        continue;
+      }
+
+      if (entry.event === "committed") {
+        const committedUrl =
+          entry.html_url ??
+          (entry.commit_url ? buildCommitHtmlUrl(entry.commit_url) ?? entry.commit_url : undefined);
+        const committedRepo = committedUrl ? parseOwnerRepoFromUrl(committedUrl) ?? { owner, repo } : { owner, repo };
+        const sha = entry.sha ?? entry.commit_id;
+        const ref = sha
+          ? `${committedRepo.owner}/${committedRepo.repo}@${String(sha).slice(0, 7)}`
+          : `${owner}/${repo}#${issueNumber}`;
+        const event = normalizeReferenceEvent("committed");
+        references.push({
+          url: committedUrl ?? buildFallbackPrUrl(owner, repo, issueNumber),
           reference: ref,
           author: actor,
           event,
@@ -248,6 +302,24 @@ const fetchTimelineReferences = async (
   return references;
 };
 
+const readContributionsFileCache = (user: string, since?: string) => {
+  if (typeof process === "undefined" || !process.cwd) return null;
+  try {
+    const cachePath = path.join(process.cwd(), "public", "contributions-cache.json");
+    const raw = fs.readFileSync(cachePath, "utf8");
+    const data = JSON.parse(raw) as CachedContributionPayload;
+    if (data?.user !== user || !Array.isArray(data.contributions) || data.contributions.length === 0) {
+      return null;
+    }
+    if (since && data.since && data.since !== since) {
+      return null;
+    }
+    return data;
+  } catch {
+    return null;
+  }
+};
+
 export default async function handler(req: any, res: any) {
   const user =
     typeof req.query?.user === "string"
@@ -268,6 +340,9 @@ export default async function handler(req: any, res: any) {
   const fresh = parseFresh(
     typeof req.query?.fresh === "string" ? req.query.fresh : undefined
   );
+  const defaultCacheControl = fresh
+    ? "no-store"
+    : "s-maxage=600, stale-while-revalidate=3600";
   const clearCache = parseClearCache(
     typeof req.query?.clearCache === "string" ? req.query.clearCache : undefined
   );
@@ -310,18 +385,16 @@ export default async function handler(req: any, res: any) {
   }
 
   // File cache: datos precargados en public/contributions-cache.json (actualizado cada 10 min)
-  if (!fresh && limit === DEFAULT_LIMIT && !includeRefs && typeof process !== "undefined" && process.cwd) {
-    try {
-      const cachePath = path.join(process.cwd(), "public", "contributions-cache.json");
-      const raw = fs.readFileSync(cachePath, "utf8");
-      const data = JSON.parse(raw) as { user?: string; contributions?: unknown[] };
-      if (data?.user === user && Array.isArray(data.contributions) && data.contributions.length > 0) {
-        res.setHeader("Cache-Control", "s-maxage=600, stale-while-revalidate=3600");
-        res.status(200).json({ user: data.user, contributions: data.contributions });
-        return;
-      }
-    } catch {
-      // sin archivo o inválido: seguir con caché en memoria o GitHub
+  if (!fresh && limit === DEFAULT_LIMIT) {
+    const fileCached = readContributionsFileCache(user, since);
+    if (fileCached) {
+      res.setHeader("Cache-Control", defaultCacheControl);
+      res.status(200).json({
+        user: fileCached.user,
+        contributions: fileCached.contributions,
+        cachedAt: fileCached.cachedAt
+      });
+      return;
     }
   }
 
@@ -329,7 +402,7 @@ export default async function handler(req: any, res: any) {
   const now = Date.now();
   const cached = responseCache.get(cacheKey);
   if (!fresh && cached && cached.expiresAt > now) {
-    res.setHeader("Cache-Control", "s-maxage=600, stale-while-revalidate=3600");
+    res.setHeader("Cache-Control", defaultCacheControl);
     res.status(200).json(cached.data);
     return;
   }
@@ -413,7 +486,7 @@ export default async function handler(req: any, res: any) {
       let references: Array<{ url: string; reference: string; author: string; event: string; createdAt?: string }> = [];
       let release: { name?: string; tag?: string; url?: string } | null = null;
 
-      const shouldIncludeRefs = includeRefs && fresh && contributions.length < WITH_REFS_LIMIT;
+      const shouldIncludeRefs = includeRefs && contributions.length < WITH_REFS_LIMIT;
 
       if (shouldIncludeRefs) {
         const ownerRepo = parseOwnerRepo(repoData.fullName);
@@ -423,9 +496,7 @@ export default async function handler(req: any, res: any) {
               fetchTimelineReferences(ownerRepo.owner, ownerRepo.repo, item.number, headers, fresh),
               fetchLatestRelease(ownerRepo.owner, ownerRepo.repo, headers, fresh)
             ]);
-            references = allRefs.filter(
-              (issue) => issue.author.toLowerCase() !== user.toLowerCase()
-            );
+            references = allRefs;
             release = latestRelease;
           } catch {
             references = [];
@@ -447,11 +518,36 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    const payload = { user, contributions };
+    const payload = {
+      user,
+      contributions,
+      cachedAt: new Date().toISOString(),
+      since
+    };
     responseCache.set(cacheKey, { expiresAt: now + CACHE_TTL_MS, data: payload });
-    res.setHeader("Cache-Control", "s-maxage=600, stale-while-revalidate=3600");
+    res.setHeader("Cache-Control", defaultCacheControl);
     res.status(200).json(payload);
-  } catch (error) {
+  } catch {
+    // Fallback a cache en memoria (stale) para mantener disponibilidad.
+    const stale = responseCache.get(cacheKey);
+    if (stale) {
+      res.setHeader("Cache-Control", fresh ? "no-store" : "s-maxage=60, stale-while-revalidate=3600");
+      res.status(200).json(stale.data);
+      return;
+    }
+    // Fallback final al archivo cacheado en disco.
+    if (limit === DEFAULT_LIMIT) {
+      const fileCached = readContributionsFileCache(user, since);
+      if (fileCached) {
+        res.setHeader("Cache-Control", fresh ? "no-store" : "s-maxage=60, stale-while-revalidate=3600");
+        res.status(200).json({
+          user: fileCached.user,
+          contributions: fileCached.contributions,
+          cachedAt: fileCached.cachedAt
+        });
+        return;
+      }
+    }
     res.status(500).json({ error: "Unexpected server error." });
   }
 }

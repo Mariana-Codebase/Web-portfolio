@@ -4,7 +4,7 @@ import { CONTENT, DATA } from '../data/content';
 import { useApp } from '../context/AppContext';
 
 type Contribution = {
-  status: 'OPEN' | 'MERGED' | 'CLOSED';
+  status: 'MERGED' | 'CLOSED';
   project: string;
   title: string;
   stars: number;
@@ -46,9 +46,9 @@ const PR_29198_SUMMARY: Record<'es' | 'en', { issue: string; fix: string }> = {
   },
   en: {
     issue:
-      'Identified and resolved a security inconsistency in the OpenClaw gateway where plugin-registered routes followed a "fail-open" model. While core API paths were protected, dynamic routes lacked mandatory authentication, creating a bypass risk for background workers and plugin endpoints.',
+      'I identified and resolved a security inconsistency in the OpenClaw gateway where plugin-registered routes followed a "fail-open" model. While core API paths were protected, dynamic routes lacked mandatory authentication, creating a bypass risk for background workers and plugin endpoints.',
     fix:
-      'I refactored the OpenClaw gateway authentication logic to replace a "fail-open" model with a secure-by-default architecture. I implemented canonical path matching to normalize incoming URLs preventing security bypasses via casing or encoding variants and enforced mandatory gateway-token validation across all explicitly registered plugin routes. I also designed a tiered gating system that secures background workers without disrupting webhook integrations that rely on third-party signatures.'
+      'I refactored the OpenClaw gateway authentication logic to replace a "fail-open" model with a secure-by-default architecture. I implemented canonical path matching to normalize incoming URLs and prevent bypasses through casing or encoding variants, and I enforced mandatory gateway-token validation across all explicitly registered plugin routes. I also designed a tiered gating system to secure background workers without breaking webhook integrations that rely on third-party signatures.'
   }
 };
 
@@ -61,23 +61,48 @@ const PR_18685_SUMMARY: Record<'es' | 'en', { issue: string; fix: string }> = {
   },
   en: {
     issue:
-      'The vulnerability was rooted in how the chat interface managed opening images. By using the standard window.open function without restrictions, the newly opened tab maintained a hierarchical connection to the main application through the window.opener object. This created a significant security risk where an attacker could exploit this relationship to perform a Reverse Phishing attack. Specifically, the image tab could maliciously redirect the original application tab to a fraudulent URL, such as a fake login page, without the user noticing. This could lead to the direct theft of session credentials or sensitive access tokens.',
+      'The vulnerability was rooted in how the chat interface managed opening images. By using window.open without restrictions, the newly opened tab kept a hierarchical connection to the main application through window.opener. This created a serious Reverse Phishing risk: the image tab could maliciously redirect the original tab to a fraudulent URL, such as a fake login page, without the user noticing. This could lead to session or sensitive token theft.',
     fix:
-      'I implemented security measures within the chat rendering component (ui/src/ui/chat/grouped-render.ts) to neutralize all cross-tab communication and ensure strict context isolation. I added the noopener and noreferrer directives to the window opening process, ensuring the new tab runs in a separate process without access to the source tab context. Furthermore, I explicitly forced window.opener = null to eliminate any remaining technical links. The result is the complete elimination of the malicious redirection attack vector, ensuring the image tab has no privileges or manipulation capabilities over the main OpenClaw application.'
+      'I implemented security hardening in the chat rendering component (ui/src/ui/chat/grouped-render.ts) to neutralize cross-tab communication and guarantee strict context isolation. I added noopener and noreferrer to the window opening process, ensuring the new tab runs in a separate process without access to the source tab context. I also explicitly set window.opener = null to remove any remaining technical link. The result is the complete elimination of the malicious redirection vector, ensuring the image tab has no privilege or manipulation capability over the main OpenClaw application.'
   }
 };
 
+const PR_18685_FALLBACK_COMMENTS = [
+  {
+    author: 'shakkernerd',
+    text:
+      'Landed iin main:\n\n- Pushed commit `a42f6f25d` to the PR head branch.\n- Merged this PR as squash into `main`.\n\nMerge commit: `649d141527488281e75d9f67e380ee522426817b`\n\nThanks @Mariana-Codebase!'
+  }
+];
+
+const PR_29198_FALLBACK_COMMENTS = [
+  {
+    author: 'steipete',
+    text:
+      'Landed manually on main as part of the gateway access/auth/config migration cluster.\n\nIncluded commits:\n- 53d10f868 (fix(gateway): land access/auth/config migration cluster)\n- 1c8ae978d (test(lobster): preserve execFile in child_process mock)\n\nValidation run before landing:\n- pnpm lint\n- pnpm build\n- pnpm test\n\nThanks again @Mariana-Codebase for #29198.'
+  },
+  {
+    author: 'KJT125',
+    text:
+      'We run claude-mem plugin with an HTTP worker on port 37777. If plugin routes are not behind gateway auth, that worker endpoint could be accessed without authorization. Combined with #28140 (config typo silently drops all security settings), this creates a scenario where plugins are both exposed AND the safety net is gone.\n\nThis fix should be backported or highlighted in release notes so users know to upgrade.'
+  }
+];
+
 const PR_29198_COMMIT_URL = 'https://github.com/openclaw/openclaw/commit/53d10f868';
+
+const isUserAuthor = (author: string) => {
+  const normalized = author.trim().toLowerCase();
+  if (!normalized) return false;
+  if (/\[bot\]$/i.test(author)) return false;
+  const knownBots = new Set(['greptile', 'greptile-apps', 'greptileai', 'codex']);
+  return !knownBots.has(normalized);
+};
+
+const isFounder = (author: string) => author.trim().toLowerCase() === 'steipete';
 
 const OPENCLAW_DESCRIPTION: Record<
   'es' | 'en',
-  {
-    intro: string;
-    achievementsTitle: string;
-    achievements: string;
-    privacyTitle: string;
-    privacy: string;
-  }
+  { intro: string; achievementsTitle: string; achievements: string; privacyTitle: string; privacy: string }
 > = {
   es: {
     intro:
@@ -86,8 +111,7 @@ const OPENCLAW_DESCRIPTION: Record<
     achievements:
       'Record historico en GitHub: se convirtio en el proyecto open source con el crecimiento mas rapido de la historia. En apenas unos meses de 2026, supero las 250,000 estrellas, rebasando la popularidad de pilares de la industria como Linux y React.',
     privacyTitle: 'Privacidad',
-    privacy:
-      'OpenClaw prioriza la ejecucion local. Esto es fundamental para la seguridad y soberania de datos.'
+    privacy: 'OpenClaw prioriza la ejecucion local. Esto es fundamental para la seguridad y soberania de datos.'
   },
   en: {
     intro:
@@ -96,8 +120,7 @@ const OPENCLAW_DESCRIPTION: Record<
     achievements:
       'Historic GitHub record: it became the fastest-growing open-source project in history. In just a few months of 2026, it surpassed 250,000 stars, overtaking major industry pillars such as Linux and React.',
     privacyTitle: 'Privacy',
-    privacy:
-      'OpenClaw prioritizes local execution. This is essential for data security and sovereignty.'
+    privacy: 'OpenClaw prioritizes local execution. This is fundamental for data security and sovereignty.'
   }
 };
 
@@ -149,6 +172,15 @@ interface ContributionsProps {
   };
 }
 
+const hasMinimumRefsAndMentions = (
+  references: Array<{ url: string; reference: string; author: string; event: string }> | undefined
+) => {
+  const refs = references ?? [];
+  const referencedCount = refs.filter((ref) => ref.event === 'referenced').length;
+  const mentionedCount = refs.filter((ref) => ref.event === 'mentioned').length;
+  return referencedCount >= 1 && mentionedCount >= 1;
+};
+
 const mapContributions = (items: Array<{
   status: string;
   project: string;
@@ -168,7 +200,8 @@ const mapContributions = (items: Array<{
   } | null;
 }>): Contribution[] => {
   return items
-    .filter((item) => item.status === 'OPEN' || item.status === 'MERGED' || item.status === 'CLOSED')
+    .filter((item) => item.status === 'MERGED' || item.status === 'CLOSED')
+    .filter((item) => hasMinimumRefsAndMentions(item.references))
     .map((item) => ({
       status: item.status as Contribution['status'],
       project: item.project,
@@ -210,27 +243,6 @@ const mapContributions = (items: Array<{
             }
           : null
     }));
-};
-
-const mergePinnedContributions = (fetched: Contribution[], previous: Contribution[]) => {
-  const previousByReference = new Map(previous.map((item) => [item.reference, item]));
-  const hydratedFetched = fetched.map((item) => {
-    const prev = previousByReference.get(item.reference);
-    if (!prev?.note?.text) return item;
-
-    return {
-      ...item,
-      status: prev.status === 'CLOSED' ? 'CLOSED' : item.status,
-      stars: item.stars || prev.stars,
-      note: prev.note ?? item.note,
-      references: item.references && item.references.length > 0 ? item.references : (prev.references ?? []),
-      release: item.release ?? prev.release ?? null
-    };
-  });
-
-  const references = new Set(hydratedFetched.map((item) => item.reference));
-  const pinned = previous.filter((item) => item.note?.text && !references.has(item.reference));
-  return [...pinned, ...hydratedFetched];
 };
 
 const parseOwnerRepoFromUrl = (url: string) => {
@@ -496,10 +508,6 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const since = DATA.contributionsSince;
-  const normalizedStarsByProject = contributions.reduce((acc, item) => {
-    acc.set(item.project.toLowerCase(), item.stars);
-    return acc;
-  }, new Map<string, number>());
 
   useEffect(() => {
     const user = DATA.githubUser;
@@ -524,29 +532,18 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
       const mapped = mapContributions(data.contributions).filter(
         (item) => !item.owner || item.owner.toLowerCase() !== user.toLowerCase()
       );
-      setContributions((prev) => mergePinnedContributions(mapped, prev));
+      setContributions(mapped);
       if (!includeRefs) {
         setIsLoading(false);
       }
     };
 
-    const fetchFromStaticCache = async () => {
-      try {
-        const response = await fetch('/contributions-cache.json');
-        if (!response.ok) return;
-        const data = await response.json();
-        if (!isMounted || !Array.isArray(data?.contributions)) return;
-        const mapped = mapContributions(data.contributions).filter(
-          (item) => !item.owner || item.owner.toLowerCase() !== user.toLowerCase()
-        );
-        setContributions((prev) => mergePinnedContributions(mapped, prev));
-      } catch {
-        return;
-      }
-    };
-
     const fetchFromGithub = async (includeRefs: boolean) => {
+      const token = import.meta.env.VITE_GITHUB_TOKEN as string | undefined;
       const headers: Record<string, string> = { Accept: 'application/vnd.github+json' };
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
       const sinceQuery = since ? `+created:>=${encodeURIComponent(since)}` : '';
       const response = await fetch(
         `https://api.github.com/search/issues?q=author:${encodeURIComponent(user)}+is:pr${sinceQuery}+sort:updated-desc&per_page=${SEARCH_PAGE_SIZE}`,
@@ -577,16 +574,14 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
         if (result.length >= CONTRIBUTIONS_LIMIT) break;
         if (!item.pull_request?.url) continue;
         let status: Contribution['status'] | null = null;
-        if (item.state === 'open') {
-          status = 'OPEN';
-        } else if (item.state === 'closed') {
+        if (item.state === 'closed') {
           try {
             const prResponse = await fetch(item.pull_request.url, {
               headers
             });
             if (prResponse.ok) {
               const prData = await prResponse.json();
-              if (prData.merged_at) status = 'MERGED';
+              status = prData.merged_at ? 'MERGED' : 'CLOSED';
             }
           } catch {
             status = null;
@@ -637,9 +632,7 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
               item.number,
               headers
             );
-            references = allRefs.filter(
-              (issue) => issue.author.toLowerCase() !== user.toLowerCase()
-            );
+            references = allRefs;
           } catch {
             references = [];
           }
@@ -664,7 +657,7 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
       }
 
       if (!isMounted) return;
-      setContributions((prev) => mergePinnedContributions(result, prev));
+      setContributions(result.filter((item) => hasMinimumRefsAndMentions(item.references)));
       if (!includeRefs) {
         setIsLoading(false);
       }
@@ -673,7 +666,6 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
     const loadContributions = async () => {
       setIsLoading(true);
       if (import.meta.env.DEV) {
-        await fetchFromStaticCache();
         await fetchFromGithub(false);
         fetchFromGithub(true);
         return;
@@ -723,73 +715,35 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
             className={`group ${themeColors.cardBg} border ${themeColors.cardBorder} p-5 md:p-6 rounded-[2.5rem] hover:border-blue-600 transition-all duration-500 flex flex-col justify-between w-full`}
           >
             {(() => {
-              const baseMentionedRefs = (item.references ?? []).filter((ref) => ref.event === 'mentioned');
-              const baseReferencedRefs = (item.references ?? []).filter((ref) => ref.event === 'referenced');
-              const mentionedAuthorSet = new Set(baseMentionedRefs.map((ref) => ref.author.toLowerCase()));
-              const referencedAuthorSet = new Set(baseReferencedRefs.map((ref) => ref.author.toLowerCase()));
-              const noteMentions = (item.note?.mentions ?? []).map((mention) => mention.replace(/^@/, ''));
-              const currentUser = DATA.githubUser.toLowerCase();
-              const syntheticMentionedRefs = noteMentions
-                .filter(
-                  (author) =>
-                    author &&
-                    author.toLowerCase() !== currentUser &&
-                    !mentionedAuthorSet.has(author.toLowerCase())
-                )
-                .map((author) => ({
-                  url: item.url,
-                  reference: item.reference.split('#')[0],
-                  author,
-                  event: 'mentioned' as const
-                }));
-              const syntheticCommitRef =
-                item.note?.commit &&
-                item.note?.author &&
-                !referencedAuthorSet.has(item.note.author.toLowerCase())
-                  ? [{
-                      url: item.note.commit.url,
-                      reference: `${item.reference.split('#')[0]}@${item.note.commit.sha.slice(0, 7)}`,
-                      author: item.note.author,
-                      event: 'referenced' as const
-                    }]
-                  : [];
-              const mentionedRefs = [...baseMentionedRefs, ...syntheticMentionedRefs].filter(
-                (ref) => ref.author.toLowerCase() !== currentUser
-              );
-              const referencedRefs = [...baseReferencedRefs, ...syntheticCommitRef];
-              const referencedCount = referencedRefs.length;
-              const mentionedCount = mentionedRefs.length;
-              const hasRefs = referencedRefs.length > 0 || mentionedRefs.length > 0;
-              const noteComments = item.note?.comments ?? [];
-              const hasAnyComments = noteComments.length > 0 || Boolean(item.note?.text);
+              const mentionedRefs = (item.references ?? []).filter((ref) => ref.event === 'mentioned');
+              const referencedRefs = (item.references ?? []).filter((ref) => ref.event === 'referenced');
               const isOpenClawContribution = item.reference?.toLowerCase().startsWith('openclaw/openclaw');
               const isPr29198 = item.reference?.toLowerCase() === 'openclaw/openclaw#29198';
               const isPr18685 = item.reference?.toLowerCase() === 'openclaw/openclaw#18685';
-              const isSpecialOpenClawPr = isPr29198 || isPr18685;
-              const specialPrTitle = isPr29198
-                ? 'Gateway: require auth on all plugin HTTP routes'
-                : isPr18685
-                  ? 'fix(ui): prevent tabnabbing in chat images'
-                  : null;
               const specialPrSummary = isPr29198
                 ? PR_29198_SUMMARY[language]
                 : isPr18685
                   ? PR_18685_SUMMARY[language]
                   : null;
               const specialPrRelease = isPr29198 ? OPENCLAW_RELEASE : isPr18685 ? OPENCLAW_RELEASE_18685 : null;
-              const specialPrWhereText = isPr29198
-                ? openclawText.whereDescription
-                : language === 'es'
-                  ? 'Este fix se encuentra en el release openclaw 2026.2.24 y corresponde al hardening de seguridad para la apertura de imagenes en chat.'
-                  : 'This fix is included in the openclaw 2026.2.24 release and corresponds to security hardening for opening chat images.';
-              const specialPrLabel = isPr29198
-                ? '@PR 29198: openclaw/openclaw'
-                : isPr18685
-                  ? '@PR 18685: openclaw/openclaw'
-                  : '';
               const specialPrCommitUrl = isPr29198 ? PR_29198_COMMIT_URL : null;
-              const hasSideContent = hasRefs || hasAnyComments || isOpenClawContribution;
-              const isFounder = (author: string) => author.toLowerCase() === 'steipete';
+              const noteComments = [
+                ...(item.note?.comments ?? []),
+                ...(isPr29198 ? PR_29198_FALLBACK_COMMENTS : []),
+                ...(isPr18685 ? PR_18685_FALLBACK_COMMENTS : [])
+              ]
+                .filter((comment) => {
+                  const author = comment.author?.trim() ?? '';
+                  if (!author || !isUserAuthor(author)) return false;
+                  const text = comment.text?.trim() ?? '';
+                  return Boolean(text);
+                })
+                .filter((comment, idx, arr) => {
+                  const key = `${comment.author.trim().toLowerCase()}::${comment.text.trim()}`;
+                  return arr.findIndex((item) => `${item.author.trim().toLowerCase()}::${item.text.trim()}` === key) === idx;
+                });
+              const hasAnyComments = noteComments.length > 0 || Boolean(item.note?.text);
+              const hasSideContent = referencedRefs.length > 0 || mentionedRefs.length > 0 || hasAnyComments || isOpenClawContribution;
 
               return (
             <div className="md:grid md:grid-cols-[220px_1fr] lg:grid-cols-[250px_1fr] md:gap-6">
@@ -800,20 +754,18 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                       className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-black uppercase tracking-wider border ${
                         item.status === 'MERGED'
                           ? 'bg-purple-600/20 text-purple-200 border-purple-500/40'
-                          : item.status === 'CLOSED'
-                            ? 'bg-amber-600/20 text-amber-200 border-amber-500/40'
-                            : 'bg-blue-600/20 text-blue-200 border-blue-500/40'
+                          : 'bg-amber-600/20 text-amber-200 border-amber-500/40'
                       }`}
                     >
                       <GitPullRequest size={14} />
-                      {item.status === 'MERGED' ? 'Merged' : item.status === 'CLOSED' ? 'Closed' : 'Open'}
+                      {item.status === 'MERGED' ? 'Merged' : 'Closed'}
                     </span>
                   </div>
                   <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider ml-4 ${
                     isDarkMode ? 'bg-white/5 text-blue-200' : 'bg-blue-50 text-blue-700'
                   }`}>
                     <Star size={14} />
-                    {normalizedStarsByProject.get(item.project.toLowerCase()) ?? item.stars}
+                    {item.stars}
                   </div>
                 </div>
 
@@ -826,150 +778,99 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                     {language === 'es' ? '@PR' : '@PR'} {item.reference.split('#')[1]}: {item.reference.split('#')[0]}
                   </div>
                 </div>
-                {item.title && !isSpecialOpenClawPr && (
-                  <div className="text-sm font-semibold tracking-tight text-left mb-3">
+                {item.title && (
+                  <div className="text-lg md:text-xl font-black tracking-tight text-left mb-3">
                     {item.title}
                   </div>
                 )}
                 {(() => {
-                  const openclawRelease = isPr29198 ? (item.release ?? OPENCLAW_RELEASE) : OPENCLAW_RELEASE_18685;
-                  const release = item.status !== 'OPEN' ? (isOpenClawContribution ? openclawRelease : item.release) : null;
-                  return (
-                    <>
-                      {release && (release.name || release.tag) && (
-                        <a
-                          href={release.url || item.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={`inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] mb-3 ${
-                            isDarkMode ? 'text-emerald-300' : 'text-emerald-700'
-                          }`}
-                        >
-                          <span>Release</span>
-                          <span className={isDarkMode ? 'text-neutral-200' : 'text-stone-700'}>
-                            {release.name || release.tag}
-                          </span>
-                        </a>
-                      )}
-                      {hasAnyComments && (
-                        <div
-                          className={`text-xs leading-relaxed rounded-2xl border px-4 py-3 mb-4 ${
-                            isDarkMode
-                              ? 'bg-white/5 border-white/10 text-neutral-200'
-                              : 'bg-stone-100 border-stone-200 text-stone-700'
-                          }`}
-                        >
-                          <div
-                            className={`text-[10px] font-black uppercase tracking-[0.2em] mb-3 ${
-                              isDarkMode ? 'text-neutral-400' : 'text-stone-600'
-                            }`}
-                          >
-                            Comments
-                          </div>
-                          <div className="space-y-3">
-                            {[
-                              ...(item.note?.text
-                                ? [{
-                                    author: item.note.author,
-                                    text: item.note.text,
-                                    mentions: item.note.mentions ?? [],
-                                    commit: item.note.commit ?? null
-                                  }]
-                                : []),
-                              ...noteComments.map((comment) => ({
-                                author: comment.author,
-                                text: comment.text,
-                                mentions: [] as string[],
-                                commit: null as { sha: string; title: string; url: string } | null
-                              }))
-                            ].map((comment, idx) => (
-                              <details
-                                key={`${comment.author}-${idx}`}
-                                className={`rounded-xl border px-3 py-2 ${
-                                  isDarkMode
-                                    ? 'border-white/10 bg-white/5'
-                                    : 'border-stone-300 bg-white'
-                                }`}
-                              >
-                                <summary className="cursor-pointer select-none text-[11px] font-black uppercase tracking-[0.16em]">
-                                  @{comment.author} commented
-                                  {isFounder(comment.author) && (
-                                    <span className={`ml-2 ${
-                                      isDarkMode ? 'text-amber-300' : 'text-amber-700'
-                                    }`}>
-                                      <span className="inline-flex items-center gap-1 align-[-2px]">
-                                        <img src="/VERIFIED.PNG" alt="Verified" className="inline-block w-3.5 h-3.5" />
-                                        <span aria-hidden="true">🦞</span>
-                                      </span>
-                                    </span>
-                                  )}
-                                </summary>
-                                <div className="mt-2 font-semibold whitespace-pre-line break-words">
-                                  {comment.text}
-                                </div>
-                                {Array.isArray(comment.mentions) && comment.mentions.length > 0 && (
-                                  <div className="mt-3 flex flex-wrap gap-2">
-                                    {comment.mentions.map((mention) => (
-                                      <span
-                                        key={`${comment.author}-${mention}`}
-                                        className={`text-[10px] font-black px-2 py-1 rounded-full border ${
-                                          isDarkMode
-                                            ? 'border-white/15 text-neutral-100 bg-white/5'
-                                            : 'border-stone-300 text-stone-700 bg-white'
-                                        }`}
-                                      >
-                                        {mention}
-                                      </span>
-                                    ))}
-                                  </div>
-                                )}
-                                {comment.commit && (
-                                  <a
-                                    href={comment.commit.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className={`mt-3 block text-xs font-semibold underline-offset-4 hover:underline ${
-                                      isDarkMode ? 'text-blue-300' : 'text-blue-700'
-                                    }`}
-                                  >
-                                    Referenced commit {comment.commit.sha}: {comment.commit.title}
-                                  </a>
-                                )}
-                              </details>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  );
+                  const release = isOpenClawContribution ? specialPrRelease ?? item.release : item.release;
+                  return release && (release.name || release.tag) ? (
+                    <a
+                      href={release.url || item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] mb-3 ${
+                        isDarkMode ? 'text-emerald-300' : 'text-emerald-700'
+                      }`}
+                    >
+                      <span>Release</span>
+                      <span className={isDarkMode ? 'text-neutral-200' : 'text-stone-700'}>
+                        {release.name || release.tag}
+                      </span>
+                    </a>
+                  ) : null;
                 })()}
+                {hasAnyComments && (
+                  <div
+                    className={`text-xs leading-relaxed rounded-2xl border px-4 py-3 mb-4 ${
+                      isDarkMode ? 'bg-white/5 border-white/10 text-neutral-200' : 'bg-stone-100 border-stone-200 text-stone-700'
+                    }`}
+                  >
+                    <div className={`text-[10px] font-black uppercase tracking-[0.2em] mb-3 ${isDarkMode ? 'text-neutral-400' : 'text-stone-600'}`}>
+                      Comments
+                    </div>
+                    <div className="space-y-3">
+                      {[
+                        ...(item.note?.text ? [{ author: item.note.author, text: item.note.text }] : []),
+                        ...noteComments
+                      ].map((comment, idx) => (
+                        <details
+                          key={`${comment.author}-${idx}`}
+                          className={`rounded-xl border px-3 py-2 ${isDarkMode ? 'border-white/10 bg-white/5' : 'border-stone-300 bg-white'}`}
+                        >
+                          <summary className="cursor-pointer select-none text-[11px] font-black uppercase tracking-[0.16em]">
+                            @{comment.author}
+                            {isFounder(comment.author) && (
+                              <span className={`ml-1 inline-flex items-center gap-1 ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`}>
+                                <img src="/VERIFIED.PNG" alt="Verified" className="inline-block w-3.5 h-3.5" />
+                                <span aria-hidden="true">🦞</span>
+                              </span>
+                            )}{' '}
+                            commented
+                          </summary>
+                          <div className="mt-2 font-semibold whitespace-pre-line break-words">{comment.text}</div>
+                        </details>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {hasSideContent && (
                 <div className="mb-2">
                   <div className="p-0">
-                    {specialPrTitle && (
-                      <div
-                        className={`text-base md:text-lg font-black tracking-tight mb-3 ${
-                          isDarkMode ? 'text-neutral-100' : 'text-stone-900'
-                        }`}
-                      >
-                        {specialPrTitle}
-                      </div>
-                    )}
                     {isOpenClawContribution && (
                       <details
                         className={`rounded-2xl border px-4 py-3 text-xs leading-relaxed mb-4 ${
-                          isDarkMode
-                            ? 'bg-white/5 border-white/10 text-neutral-200'
-                            : 'bg-stone-100 border-stone-200 text-stone-700'
+                          isDarkMode ? 'bg-white/5 border-white/10 text-neutral-200' : 'bg-stone-100 border-stone-200 text-stone-700'
                         }`}
                       >
                         <summary className="cursor-pointer select-none font-black uppercase tracking-[0.2em]">
                           {openclawText.whatIsOpenClaw}
                         </summary>
                         <div className="mt-3 space-y-3">
-                          <p className="font-semibold">{OPENCLAW_DESCRIPTION[language].intro}</p>
+                          <p className="font-semibold">
+                            {(() => {
+                              const intro = OPENCLAW_DESCRIPTION[language].intro;
+                              const founderToken = '(@steipete)';
+                              if (!intro.includes(founderToken)) return intro;
+                              const [before, after] = intro.split(founderToken);
+                              return (
+                                <>
+                                  {before}
+                                  <span className="inline-flex items-center gap-1">
+                                    <span>(@steipete)</span>
+                                    <span className={`inline-flex items-center gap-1 ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`}>
+                                      <img src="/VERIFIED.PNG" alt="Verified" className="inline-block w-3.5 h-3.5" />
+                                      <span aria-hidden="true">🦞</span>
+                                    </span>
+                                  </span>
+                                  {after}
+                                </>
+                              );
+                            })()}
+                          </p>
                           <div>
                             <p className="font-black">{OPENCLAW_DESCRIPTION[language].achievementsTitle}</p>
                             <p className="font-semibold mt-1">{OPENCLAW_DESCRIPTION[language].achievements}</p>
@@ -981,12 +882,10 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                         </div>
                       </details>
                     )}
-                    {isSpecialOpenClawPr && specialPrSummary && (
+                    {specialPrSummary && (
                       <details
                         className={`rounded-2xl border px-4 py-3 text-xs leading-relaxed mb-4 ${
-                          isDarkMode
-                            ? 'bg-white/5 border-white/10 text-neutral-200'
-                            : 'bg-stone-100 border-stone-200 text-stone-700'
+                          isDarkMode ? 'bg-white/5 border-white/10 text-neutral-200' : 'bg-stone-100 border-stone-200 text-stone-700'
                         }`}
                       >
                         <summary className="cursor-pointer select-none font-black uppercase tracking-[0.2em]">
@@ -994,21 +893,13 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                         </summary>
                         <div className="mt-3 space-y-3">
                           <div>
-                            <div
-                              className={`text-[10px] font-black uppercase tracking-[0.2em] mb-1 ${
-                                isDarkMode ? 'text-neutral-400' : 'text-stone-600'
-                              }`}
-                            >
+                            <div className={`text-[10px] font-black uppercase tracking-[0.2em] mb-1 ${isDarkMode ? 'text-neutral-400' : 'text-stone-600'}`}>
                               {openclawText.whatIIdentified}
                             </div>
                             <p className="font-semibold">{specialPrSummary.issue}</p>
                           </div>
                           <div>
-                            <div
-                              className={`text-[10px] font-black uppercase tracking-[0.2em] mb-1 ${
-                                isDarkMode ? 'text-neutral-400' : 'text-stone-600'
-                              }`}
-                            >
+                            <div className={`text-[10px] font-black uppercase tracking-[0.2em] mb-1 ${isDarkMode ? 'text-neutral-400' : 'text-stone-600'}`}>
                               {openclawText.whatIDidToFixIt}
                             </div>
                             <p className="font-semibold">{specialPrSummary.fix}</p>
@@ -1016,55 +907,45 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                         </div>
                       </details>
                     )}
-                    {isSpecialOpenClawPr && specialPrRelease && (
+                    {specialPrRelease && (
                       <details
                         className={`rounded-2xl border px-4 py-3 text-xs leading-relaxed mb-4 ${
-                          isDarkMode
-                            ? 'bg-white/5 border-white/10 text-neutral-200'
-                            : 'bg-stone-100 border-stone-200 text-stone-700'
+                          isDarkMode ? 'bg-white/5 border-white/10 text-neutral-200' : 'bg-stone-100 border-stone-200 text-stone-700'
                         }`}
                       >
                         <summary className="cursor-pointer select-none font-black uppercase tracking-[0.2em]">
                           {openclawText.whereCanIFindIt}
                         </summary>
                         <div className="mt-3 space-y-3 font-semibold">
-                          <p>{specialPrWhereText}</p>
+                          {(isPr29198 || isPr18685) && (
+                            <p>
+                              {isPr29198
+                                ? openclawText.whereDescription
+                                : language === 'es'
+                                  ? 'Este fix se encuentra en el release openclaw 2026.2.24 y corresponde al hardening de seguridad para la apertura de imagenes en chat.'
+                                  : 'This fix is included in the openclaw 2026.2.24 release and corresponds to security hardening for opening chat images.'}
+                            </p>
+                          )}
                           <p>
-                            {openclawText.release}: {' '}
-                            <a
-                              href={specialPrRelease.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={`underline underline-offset-4 ${
-                                isDarkMode ? 'text-blue-300' : 'text-blue-700'
-                              }`}
-                            >
+                            {openclawText.release}:{' '}
+                            <a href={specialPrRelease.url} target="_blank" rel="noopener noreferrer" className={`underline underline-offset-4 ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>
                               {specialPrRelease.name || specialPrRelease.tag}
                             </a>
                           </p>
                           <p>
-                            {openclawText.pullRequest}: {' '}
-                            <a
-                              href={item.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={`underline underline-offset-4 ${
-                                isDarkMode ? 'text-blue-300' : 'text-blue-700'
-                              }`}
-                            >
-                              {specialPrLabel}
+                            {openclawText.pullRequest}:{' '}
+                            <a href={item.url} target="_blank" rel="noopener noreferrer" className={`underline underline-offset-4 ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>
+                              @PR {item.reference.split('#')[1]}: {item.reference.split('#')[0]}
                             </a>
                           </p>
                           {specialPrCommitUrl && (
                             <p>
-                              {openclawText.referencedCommit}: {' '}
+                              {openclawText.referencedCommit}:{' '}
                               <a
                                 href={specialPrCommitUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className={`underline underline-offset-4 ${
-                                  isDarkMode ? 'text-blue-300' : 'text-blue-700'
-                                }`}
+                                className={`underline underline-offset-4 ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}
                               >
                                 53d10f868
                               </a>
@@ -1073,24 +954,16 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                         </div>
                       </details>
                     )}
-                    {hasRefs && (
+                    {(referencedRefs.length > 0 || mentionedRefs.length > 0) && (
                       <div className={`mt-4 pt-4 border-t ${isDarkMode ? 'border-white/10' : 'border-stone-200'}`}>
                         <div className="space-y-2">
-                          <div className={`text-xs font-black uppercase tracking-[0.15em] ${
-                            isDarkMode ? 'text-neutral-400' : 'text-stone-600'
-                          }`}>
-                            Commits and references:{' '}
-                            <span className={`${isDarkMode ? 'text-neutral-100' : 'text-stone-900'}`}>
-                              {referencedCount}
-                            </span>
+                          <div className={`text-xs font-black uppercase tracking-[0.15em] ${isDarkMode ? 'text-neutral-400' : 'text-stone-600'}`}>
+                            References:{' '}
+                            <span className={`${isDarkMode ? 'text-neutral-100' : 'text-stone-900'}`}>{referencedRefs.length}</span>
                           </div>
-                          <div className={`text-xs font-black uppercase tracking-[0.15em] ${
-                            isDarkMode ? 'text-neutral-400' : 'text-stone-600'
-                          }`}>
+                          <div className={`text-xs font-black uppercase tracking-[0.15em] ${isDarkMode ? 'text-neutral-400' : 'text-stone-600'}`}>
                             Mentions:{' '}
-                            <span className={`${isDarkMode ? 'text-neutral-100' : 'text-stone-900'}`}>
-                              {mentionedCount}
-                            </span>
+                            <span className={`${isDarkMode ? 'text-neutral-100' : 'text-stone-900'}`}>{mentionedRefs.length}</span>
                           </div>
                         </div>
                       </div>

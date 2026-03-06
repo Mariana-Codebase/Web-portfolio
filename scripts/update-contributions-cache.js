@@ -3,7 +3,7 @@
  * Pensado para ejecutarse cada 10 min (p. ej. con GitHub Actions).
  * La API sirve este archivo al instante; este script lo refresca.
  *
- * Uso: SITE_URL=https://tu-dominio.vercel.app node scripts/update-contributions-cache.js
+ * Uso: SITE_URL=https://tu-dominio.vercel.app GITHUB_CONTRIBUTIONS_SINCE=2025-01-01 node scripts/update-contributions-cache.js
  */
 
 import fs from "node:fs";
@@ -16,7 +16,9 @@ if (!SITE_URL) {
   console.error("Missing SITE_URL env var");
   process.exit(1);
 }
-const API_URL = `${SITE_URL.replace(/\/$/, "")}/api/contributions?user=${encodeURIComponent(USER)}&limit=6&includeRefs=0`;
+const SINCE = process.env.GITHUB_CONTRIBUTIONS_SINCE || "2025-01-01";
+const cacheBust = Date.now();
+const API_URL = `${SITE_URL.replace(/\/$/, "")}/api/contributions?user=${encodeURIComponent(USER)}&limit=6&includeRefs=1&since=${encodeURIComponent(SINCE)}&fresh=1&t=${cacheBust}`;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,7 +36,13 @@ async function main() {
       console.error("Invalid API response shape");
       process.exit(1);
     }
-    fs.writeFileSync(CACHE_PATH, JSON.stringify(data, null, 0), "utf8");
+    const payload = {
+      user: data.user,
+      contributions: data.contributions,
+      since: SINCE,
+      cachedAt: new Date().toISOString()
+    };
+    fs.writeFileSync(CACHE_PATH, JSON.stringify(payload, null, 0), "utf8");
     console.log("OK: contributions-cache.json updated with", data.contributions.length, "contributions");
   } catch (err) {
     console.error(err);
