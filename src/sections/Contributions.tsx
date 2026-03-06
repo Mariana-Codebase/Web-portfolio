@@ -741,8 +741,6 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
             className={`group ${themeColors.cardBg} border ${themeColors.cardBorder} p-5 md:p-6 rounded-[2.5rem] hover:border-blue-600 transition-all duration-500 flex flex-col justify-between w-full`}
           >
             {(() => {
-              const mentionedRefs = (item.references ?? []).filter((ref) => ref.event === 'mentioned');
-              const referencedRefs = (item.references ?? []).filter((ref) => ref.event === 'referenced');
               const isOpenClawContribution = item.reference?.toLowerCase().startsWith('openclaw/openclaw');
               const isPr29198 = item.reference?.toLowerCase() === 'openclaw/openclaw#29198';
               const isPr18685 = item.reference?.toLowerCase() === 'openclaw/openclaw#18685';
@@ -773,7 +771,7 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                   return arr.findIndex((item) => `${item.author.trim().toLowerCase()}::${item.text.trim()}` === key) === idx;
                 });
               const hasAnyComments = noteComments.length > 0;
-              const hasSideContent = referencedRefs.length > 0 || mentionedRefs.length > 0 || hasAnyComments || isOpenClawContribution;
+              const hasSideContent = hasAnyComments || isOpenClawContribution;
 
               return (
             <div className="md:grid md:grid-cols-[220px_1fr] lg:grid-cols-[250px_1fr] md:gap-6">
@@ -980,20 +978,6 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                           )}
                         </div>
                       </details>
-                    )}
-                    {(referencedRefs.length > 0 || mentionedRefs.length > 0) && (
-                      <div className={`mt-4 pt-4 border-t ${isDarkMode ? 'border-white/10' : 'border-stone-200'}`}>
-                        <div className="space-y-2">
-                          <div className={`text-xs font-black uppercase tracking-[0.15em] ${isDarkMode ? 'text-neutral-400' : 'text-stone-600'}`}>
-                            References:{' '}
-                            <span className={`${isDarkMode ? 'text-neutral-100' : 'text-stone-900'}`}>{referencedRefs.length}</span>
-                          </div>
-                          <div className={`text-xs font-black uppercase tracking-[0.15em] ${isDarkMode ? 'text-neutral-400' : 'text-stone-600'}`}>
-                            Mentions:{' '}
-                            <span className={`${isDarkMode ? 'text-neutral-100' : 'text-stone-900'}`}>{mentionedRefs.length}</span>
-                          </div>
-                        </div>
-                      </div>
                     )}
                   </div>
                 </div>
