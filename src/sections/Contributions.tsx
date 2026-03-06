@@ -173,13 +173,19 @@ interface ContributionsProps {
   };
 }
 
-const hasMinimumRefsAndMentions = (
-  references: Array<{ url: string; reference: string; author: string; event: string }> | undefined
-) => {
-  const refs = references ?? [];
-  const referencedCount = refs.filter((ref) => ref.event === 'referenced').length;
-  const mentionedCount = refs.filter((ref) => ref.event === 'mentioned').length;
-  return referencedCount >= 1 && mentionedCount >= 1;
+const hasMinimumEvidence = (item: {
+  references?: Array<{ url: string; reference: string; author: string; event: string }>;
+  note?: {
+    text?: string;
+    comments?: Array<{ author?: string; text?: string }>;
+  } | null;
+}) => {
+  const refsCount = (item.references ?? []).length;
+  const hasNoteText = Boolean(item.note?.text?.trim());
+  const hasNoteComments = Boolean(
+    item.note?.comments?.some((comment) => Boolean(comment?.text?.trim()))
+  );
+  return refsCount > 0 || hasNoteText || hasNoteComments;
 };
 
 const mapContributions = (items: Array<{
@@ -202,7 +208,7 @@ const mapContributions = (items: Array<{
 }>): Contribution[] => {
   return items
     .filter((item) => item.status === 'MERGED' || item.status === 'CLOSED')
-    .filter((item) => hasMinimumRefsAndMentions(item.references))
+    .filter((item) => hasMinimumEvidence(item))
     .map((item) => ({
       status: item.status as Contribution['status'],
       project: item.project,
@@ -660,7 +666,7 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
       }
 
       if (!isMounted) return;
-      setContributions(result.filter((item) => hasMinimumRefsAndMentions(item.references)));
+      setContributions(result.filter((item) => hasMinimumEvidence(item)));
       if (!includeRefs) {
         setIsLoading(false);
       }
