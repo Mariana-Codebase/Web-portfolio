@@ -99,7 +99,7 @@ const PR_29198_FALLBACK_COMMENTS = [
   {
     author: 'KJT125',
     text:
-      'We run claude-mem plugin with an HTTP worker on port 37777. If plugin routes are not behind gateway auth, that worker endpoint could be accessed without authorization. Combined with #28140 (config typo silently drops all security settings), this creates a scenario where plugins are both exposed AND the safety net is gone.\n\nThis fix should be backported or highlighted in release notes so users know to upgrade.'
+      '+1 - This is a real security gap.\n\nWe run claude-mem plugin with an HTTP worker on port 37777. If plugin routes are not behind gateway auth, that worker endpoint could be accessed without authorization. Combined with #28140 (config typo silently drops all security settings), this creates a scenario where plugins are both exposed AND the safety net is gone.\n\nThis fix should be backported or highlighted in release notes so users know to upgrade.'
   }
 ];
 
@@ -769,6 +769,16 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                 .filter((comment, idx, arr) => {
                   const key = `${comment.author.trim().toLowerCase()}::${comment.text.trim()}`;
                   return arr.findIndex((item) => `${item.author.trim().toLowerCase()}::${item.text.trim()}` === key) === idx;
+                })
+                .map((comment) => {
+                  if (isPr29198 && comment.author.trim().toLowerCase() === 'kjt125') {
+                    return {
+                      ...comment,
+                      text:
+                        '+1 - This is a real security gap.\n\nWe run claude-mem plugin with an HTTP worker on port 37777. If plugin routes are not behind gateway auth, that worker endpoint could be accessed without authorization. Combined with #28140 (config typo silently drops all security settings), this creates a scenario where plugins are both exposed AND the safety net is gone.\n\nThis fix should be backported or highlighted in release notes so users know to upgrade.'
+                    };
+                  }
+                  return comment;
                 });
               const hasAnyComments = noteComments.length > 0;
               const hasSideContent = hasAnyComments || isOpenClawContribution;
