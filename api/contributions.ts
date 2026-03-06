@@ -61,7 +61,7 @@ const parseClearCache = (value: string | undefined) => {
 const buildSearchUrl = (user: string, perPage: number, since?: string) => {
   const sinceFilter = since ? ` created:>=${since}` : "";
   const params = new URLSearchParams({
-    q: `author:${user} is:pr is:merged${sinceFilter} sort:updated-desc`,
+    q: `author:${user} is:pr${sinceFilter} sort:updated-desc`,
     per_page: String(perPage)
   });
 
@@ -432,7 +432,7 @@ export default async function handler(req: any, res: any) {
 
     const repoCache = new Map<string, { name: string; fullName: string; stars: number; owner: string }>();
     const contributions: Array<{
-      status: "OPEN" | "MERGED";
+      status: "MERGED" | "CLOSED";
       project: string;
       title: string;
       stars: number;
@@ -446,9 +446,19 @@ export default async function handler(req: any, res: any) {
     for (const item of searchData.items ?? []) {
       if (contributions.length >= limit) break;
       if (!item.pull_request?.url) continue;
-
-      // La búsqueda ya filtra solo PRs mergeados
-      const status: "MERGED" = "MERGED";
+      let status: "MERGED" | "CLOSED" | null = null;
+      if (item.state === "closed") {
+        try {
+          const prResponse = await fetch(item.pull_request.url, { headers });
+          if (prResponse.ok) {
+            const prData = (await prResponse.json()) as { merged_at?: string | null };
+            status = prData.merged_at ? "MERGED" : "CLOSED";
+          }
+        } catch {
+          status = null;
+        }
+      }
+      if (!status) continue;
 
       const repoUrl = item.repository_url;
       let repoData = repoCache.get(repoUrl);
