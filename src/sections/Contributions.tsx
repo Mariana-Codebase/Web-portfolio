@@ -24,6 +24,7 @@ type Contribution = {
 
 const CONTRIBUTIONS_LIMIT = 6;
 const SEARCH_PAGE_SIZE = 12;
+const MAX_TIMELINE_PAGES = 20;
 
 const OPENCLAW_RELEASE = {
   name: 'openclaw 2026.3.1',
@@ -426,7 +427,7 @@ const fetchTimelineReferences = async (
   let page = 1;
   const perPage = 100;
 
-  while (page <= 5) {
+  while (page <= MAX_TIMELINE_PAGES) {
     const timelineResponse = await fetch(
       `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}/timeline?per_page=${perPage}&page=${page}`,
       { headers: { ...headers, Accept: 'application/vnd.github+json, application/vnd.github.mockingbird-preview+json' } }

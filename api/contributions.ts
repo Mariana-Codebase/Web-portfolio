@@ -6,7 +6,7 @@ const CACHE_TTL_MS = 10 * 60 * 1000;
 const responseCache = new Map<string, { expiresAt: number; data: unknown }>();
 const timelineCache = new Map<string, { expiresAt: number; data: Array<{ url: string; reference: string; author: string; event: string; createdAt?: string }> }>();
 const releaseCache = new Map<string, { expiresAt: number; data: { name?: string; tag?: string; url?: string } | null }>();
-const MAX_TIMELINE_PAGES = 5;
+const MAX_TIMELINE_PAGES = 20;
 const WITH_REFS_LIMIT = DEFAULT_LIMIT;
 
 type ContributionReference = { url: string; reference: string; author: string; event: string; createdAt?: string };
