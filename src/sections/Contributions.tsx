@@ -25,6 +25,7 @@ type Contribution = {
 const CONTRIBUTIONS_LIMIT = 6;
 const SEARCH_PAGE_SIZE = 12;
 const MAX_TIMELINE_PAGES = 20;
+const IGNORED_PR_NUMBERS = new Set([18665, 26977, 26984]);
 
 const OPENCLAW_RELEASE = {
   name: 'openclaw 2026.3.1',
@@ -208,6 +209,10 @@ const mapContributions = (items: Array<{
 }>): Contribution[] => {
   return items
     .filter((item) => item.status === 'MERGED' || item.status === 'CLOSED')
+    .filter((item) => {
+      const prNumber = Number(String(item.reference).split('#')[1] ?? '');
+      return !IGNORED_PR_NUMBERS.has(prNumber);
+    })
     .filter((item) => hasMinimumEvidence(item))
     .map((item) => ({
       status: item.status as Contribution['status'],
@@ -582,6 +587,7 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
       for (const item of items) {
         if (result.length >= CONTRIBUTIONS_LIMIT) break;
         if (!item.pull_request?.url) continue;
+        if (IGNORED_PR_NUMBERS.has(Number(item.number))) continue;
         let status: Contribution['status'] | null = null;
         if (item.state === 'closed') {
           try {

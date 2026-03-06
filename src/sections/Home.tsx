@@ -50,7 +50,7 @@ export const Home: React.FC<HomeProps> = ({ themeColors }) => {
             { 
               id: 'linkedin', 
               icon: <Linkedin size={20} />,
-              href: "#", 
+              href: "https://www.linkedin.com/in/marianasinisterra", 
               tooltip: t.tooltips.linkedin,
               hoverColor: isDarkMode ? 'hover:bg-[#3b82f6] hover:text-white hover:border-[#3b82f6]' : 'hover:bg-[#3b82f6] hover:text-white hover:border-[#3b82f6]'
             },
@@ -65,6 +65,8 @@ export const Home: React.FC<HomeProps> = ({ themeColors }) => {
             <a 
               key={social.id} 
               href={social.href} 
+              target={social.id === 'mail' ? undefined : '_blank'}
+              rel={social.id === 'mail' ? undefined : 'noopener noreferrer'}
               onClick={(event) => {
                 if (social.id === 'mail') {
                   event.preventDefault();

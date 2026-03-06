@@ -3,6 +3,7 @@ import fs from "fs";
 
 const DEFAULT_LIMIT = 6;
 const CACHE_TTL_MS = 10 * 60 * 1000;
+const IGNORED_PR_NUMBERS = new Set([18665, 26977, 26984]);
 const responseCache = new Map<string, { expiresAt: number; data: unknown }>();
 const timelineCache = new Map<string, { expiresAt: number; data: Array<{ url: string; reference: string; author: string; event: string; createdAt?: string }> }>();
 const releaseCache = new Map<string, { expiresAt: number; data: { name?: string; tag?: string; url?: string } | null }>();
@@ -446,6 +447,7 @@ export default async function handler(req: any, res: any) {
     for (const item of searchData.items ?? []) {
       if (contributions.length >= limit) break;
       if (!item.pull_request?.url) continue;
+      if (IGNORED_PR_NUMBERS.has(Number(item.number))) continue;
       let status: "MERGED" | "CLOSED" | null = null;
       if (item.state === "closed") {
         try {
