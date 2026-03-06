@@ -384,14 +384,17 @@ export default async function handler(req: any, res: any) {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  // File cache: datos precargados en public/contributions-cache.json (actualizado cada 10 min)
-  if (!fresh && limit === DEFAULT_LIMIT) {
+  // File cache: solo para carga ligera sin referencias.
+  if (!fresh && !includeRefs && limit === DEFAULT_LIMIT) {
     const fileCached = readContributionsFileCache(user, since);
     if (fileCached) {
       res.setHeader("Cache-Control", defaultCacheControl);
       res.status(200).json({
         user: fileCached.user,
-        contributions: fileCached.contributions,
+        contributions: fileCached.contributions.map((item) => ({
+          ...item,
+          references: []
+        })),
         cachedAt: fileCached.cachedAt
       });
       return;

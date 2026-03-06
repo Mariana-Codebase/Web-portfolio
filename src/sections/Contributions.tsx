@@ -518,8 +518,10 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
     const fetchFromApi = async (includeRefs: boolean) => {
       const sinceParam = since ? `&since=${encodeURIComponent(since)}` : '';
       const freshParam = includeRefs ? '&fresh=1' : '';
+      const cacheBustParam = includeRefs ? `&t=${Date.now()}` : '';
       const response = await fetch(
-        `/api/contributions?user=${encodeURIComponent(user)}&limit=${CONTRIBUTIONS_LIMIT}&includeRefs=${includeRefs ? '1' : '0'}${sinceParam}${freshParam}`
+        `/api/contributions?user=${encodeURIComponent(user)}&limit=${CONTRIBUTIONS_LIMIT}&includeRefs=${includeRefs ? '1' : '0'}${sinceParam}${freshParam}${cacheBustParam}`,
+        includeRefs ? { cache: 'no-store' } : undefined
       );
       if (!response.ok) throw new Error('api_error');
       const data = await response.json();
@@ -728,11 +730,15 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                   : null;
               const specialPrRelease = isPr29198 ? OPENCLAW_RELEASE : isPr18685 ? OPENCLAW_RELEASE_18685 : null;
               const specialPrCommitUrl = isPr29198 ? PR_29198_COMMIT_URL : null;
-              const noteComments = [
+              const commentCandidates = [
+                ...(item.note?.text
+                  ? [{ author: item.note.author, text: item.note.text }]
+                  : []),
                 ...(item.note?.comments ?? []),
                 ...(isPr29198 ? PR_29198_FALLBACK_COMMENTS : []),
                 ...(isPr18685 ? PR_18685_FALLBACK_COMMENTS : [])
-              ]
+              ];
+              const noteComments = commentCandidates
                 .filter((comment) => {
                   const author = comment.author?.trim() ?? '';
                   if (!author || !isUserAuthor(author)) return false;
@@ -743,7 +749,7 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                   const key = `${comment.author.trim().toLowerCase()}::${comment.text.trim()}`;
                   return arr.findIndex((item) => `${item.author.trim().toLowerCase()}::${item.text.trim()}` === key) === idx;
                 });
-              const hasAnyComments = noteComments.length > 0 || Boolean(item.note?.text);
+              const hasAnyComments = noteComments.length > 0;
               const hasSideContent = referencedRefs.length > 0 || mentionedRefs.length > 0 || hasAnyComments || isOpenClawContribution;
 
               return (
@@ -812,10 +818,7 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                       Comments
                     </div>
                     <div className="space-y-3">
-                      {[
-                        ...(item.note?.text ? [{ author: item.note.author, text: item.note.text }] : []),
-                        ...noteComments
-                      ].map((comment, idx) => (
+                      {noteComments.map((comment, idx) => (
                         <details
                           key={`${comment.author}-${idx}`}
                           className={`rounded-xl border px-3 py-2 ${isDarkMode ? 'border-white/10 bg-white/5' : 'border-stone-300 bg-white'}`}
