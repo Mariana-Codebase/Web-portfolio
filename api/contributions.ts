@@ -34,6 +34,17 @@ const parseLimit = (value: string | undefined) => {
   return Math.min(parsed, 50);
 };
 
+const dedupeReferences = (references: ContributionReference[]) => {
+  const byKey = new Map<string, ContributionReference>();
+  for (const ref of references) {
+    const key = `${ref.event}::${ref.reference}`;
+    if (!byKey.has(key)) {
+      byKey.set(key, ref);
+    }
+  }
+  return Array.from(byKey.values());
+};
+
 const parseIncludeRefs = (value: string | undefined) => {
   if (!value) return true;
   const normalized = value.toLowerCase();
@@ -385,17 +396,19 @@ export default async function handler(req: any, res: any) {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  // File cache: solo para carga ligera sin referencias.
-  if (!fresh && !includeRefs && limit === DEFAULT_LIMIT) {
+  // File cache: fuente principal para limit por defecto (rápido y estable).
+  if (!fresh && limit === DEFAULT_LIMIT) {
     const fileCached = readContributionsFileCache(user, since);
     if (fileCached) {
       res.setHeader("Cache-Control", defaultCacheControl);
       res.status(200).json({
         user: fileCached.user,
-        contributions: fileCached.contributions.map((item) => ({
-          ...item,
-          references: []
-        })),
+        contributions: includeRefs
+          ? fileCached.contributions
+          : fileCached.contributions.map((item) => ({
+              ...item,
+              references: []
+            })),
         cachedAt: fileCached.cachedAt
       });
       return;
@@ -511,7 +524,7 @@ export default async function handler(req: any, res: any) {
               fetchTimelineReferences(ownerRepo.owner, ownerRepo.repo, item.number, headers, fresh),
               fetchLatestRelease(ownerRepo.owner, ownerRepo.repo, headers, fresh)
             ]);
-            references = allRefs;
+            references = dedupeReferences(allRefs);
             release = latestRelease;
           } catch {
             references = [];

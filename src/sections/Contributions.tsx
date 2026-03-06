@@ -27,6 +27,19 @@ const SEARCH_PAGE_SIZE = 12;
 const MAX_TIMELINE_PAGES = 20;
 const IGNORED_PR_NUMBERS = new Set([18665, 26977, 26984]);
 
+const dedupeReferences = (
+  references: Array<{ url: string; reference: string; author: string; event: string }> | undefined
+) => {
+  const byKey = new Map<string, { url: string; reference: string; author: string; event: string }>();
+  for (const ref of references ?? []) {
+    const key = `${ref.event}::${ref.reference}`;
+    if (!byKey.has(key)) {
+      byKey.set(key, ref);
+    }
+  }
+  return Array.from(byKey.values());
+};
+
 const OPENCLAW_RELEASE = {
   name: 'openclaw 2026.3.1',
   tag: 'v2026.3.1',
@@ -222,7 +235,7 @@ const mapContributions = (items: Array<{
       url: item.url,
       reference: item.reference,
       owner: item.owner,
-      references: Array.isArray(item.references) ? item.references : [],
+      references: dedupeReferences(Array.isArray(item.references) ? item.references : []),
       release: item.release ?? null,
       note:
         item.note && typeof item.note.text === 'string' && item.note.text.trim()
@@ -528,11 +541,12 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
 
     const fetchFromApi = async (includeRefs: boolean) => {
       const sinceParam = since ? `&since=${encodeURIComponent(since)}` : '';
-      const freshParam = includeRefs ? '&fresh=1' : '';
-      const cacheBustParam = includeRefs ? `&t=${Date.now()}` : '';
+      const shouldForceFresh = includeRefs && import.meta.env.DEV;
+      const freshParam = shouldForceFresh ? '&fresh=1' : '';
+      const cacheBustParam = shouldForceFresh ? `&t=${Date.now()}` : '';
       const response = await fetch(
         `/api/contributions?user=${encodeURIComponent(user)}&limit=${CONTRIBUTIONS_LIMIT}&includeRefs=${includeRefs ? '1' : '0'}${sinceParam}${freshParam}${cacheBustParam}`,
-        includeRefs ? { cache: 'no-store' } : undefined
+        shouldForceFresh ? { cache: 'no-store' } : undefined
       );
       if (!response.ok) throw new Error('api_error');
       const data = await response.json();
@@ -547,9 +561,7 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
         (item) => !item.owner || item.owner.toLowerCase() !== user.toLowerCase()
       );
       setContributions(mapped);
-      if (!includeRefs) {
-        setIsLoading(false);
-      }
+      setIsLoading(false);
     };
 
     const fetchFromGithub = async (includeRefs: boolean) => {
@@ -647,7 +659,7 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
               item.number,
               headers
             );
-            references = allRefs;
+            references = dedupeReferences(allRefs);
           } catch {
             references = [];
           }
@@ -686,8 +698,7 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
         return;
       }
       try {
-        await fetchFromApi(false);
-        fetchFromApi(true);
+        await fetchFromApi(true);
       } catch {
         await fetchFromGithub(false);
         fetchFromGithub(true);
