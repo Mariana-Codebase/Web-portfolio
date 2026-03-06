@@ -738,7 +738,7 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
         {contributions.map((item, index) => (
           <div
             key={`${item.reference}-${index}`}
-            className={`group ${themeColors.cardBg} border ${themeColors.cardBorder} p-5 md:p-6 rounded-[2.5rem] hover:border-blue-600 transition-all duration-500 flex flex-col justify-between w-full`}
+            className={`group ${themeColors.cardBg} border ${themeColors.cardBorder} p-5 md:p-6 rounded-[2.5rem] hover:border-blue-600 transition-all duration-500 flex flex-col w-full`}
           >
             {(() => {
               const isOpenClawContribution = item.reference?.toLowerCase().startsWith('openclaw/openclaw');
@@ -774,7 +774,7 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
               const hasSideContent = hasAnyComments || isOpenClawContribution;
 
               return (
-            <div className="md:grid md:grid-cols-[220px_1fr] lg:grid-cols-[250px_1fr] md:gap-6">
+            <div className="md:grid md:grid-cols-[220px_1fr] lg:grid-cols-[250px_1fr] md:gap-6 md:items-start">
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
@@ -806,7 +806,7 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                     {language === 'es' ? '@PR' : '@PR'} {item.reference.split('#')[1]}: {item.reference.split('#')[0]}
                   </div>
                 </div>
-                {item.title && (
+                {item.title && !isOpenClawContribution && (
                   <div className="text-lg md:text-xl font-black tracking-tight text-left mb-3">
                     {item.title}
                   </div>
@@ -831,11 +831,11 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                 })()}
                 {hasAnyComments && (
                   <div
-                    className={`text-xs leading-relaxed rounded-2xl border px-4 py-3 mb-4 ${
+                    className={`text-[13px] leading-relaxed rounded-2xl border px-4 py-3 mb-4 ${
                       isDarkMode ? 'bg-white/5 border-white/10 text-neutral-200' : 'bg-stone-100 border-stone-200 text-stone-700'
                     }`}
                   >
-                    <div className={`text-[10px] font-black uppercase tracking-[0.2em] mb-3 ${isDarkMode ? 'text-neutral-400' : 'text-stone-600'}`}>
+                    <div className={`text-[11px] font-black uppercase tracking-[0.2em] mb-3 ${isDarkMode ? 'text-neutral-400' : 'text-stone-600'}`}>
                       Comments
                     </div>
                     <div className="space-y-3">
@@ -844,7 +844,7 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                           key={`${comment.author}-${idx}`}
                           className={`rounded-xl border px-3 py-2 ${isDarkMode ? 'border-white/10 bg-white/5' : 'border-stone-300 bg-white'}`}
                         >
-                          <summary className="cursor-pointer select-none text-[11px] font-black uppercase tracking-[0.16em]">
+                          <summary className="cursor-pointer select-none text-xs font-black uppercase tracking-[0.16em]">
                             @{comment.author}
                             {isFounder(comment.author) && (
                               <span className={`ml-1 inline-flex items-center gap-1 ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`}>
@@ -864,10 +864,19 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
 
               {hasSideContent && (
                 <div className="mb-2">
-                  <div className="p-0">
+                  <div className="p-0 space-y-4">
+                    {isOpenClawContribution && item.title && (
+                      <div
+                        className={`text-lg md:text-xl font-black tracking-tight leading-snug ${
+                          isDarkMode ? 'text-neutral-100' : 'text-stone-900'
+                        }`}
+                      >
+                        {item.title}
+                      </div>
+                    )}
                     {isOpenClawContribution && (
                       <details
-                        className={`rounded-2xl border px-4 py-3 text-xs leading-relaxed mb-4 ${
+                        className={`rounded-2xl border px-4 py-3 text-[13px] leading-relaxed ${
                           isDarkMode ? 'bg-white/5 border-white/10 text-neutral-200' : 'bg-stone-100 border-stone-200 text-stone-700'
                         }`}
                       >
@@ -909,7 +918,7 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                     )}
                     {specialPrSummary && (
                       <details
-                        className={`rounded-2xl border px-4 py-3 text-xs leading-relaxed mb-4 ${
+                        className={`rounded-2xl border px-4 py-3 text-[13px] leading-relaxed ${
                           isDarkMode ? 'bg-white/5 border-white/10 text-neutral-200' : 'bg-stone-100 border-stone-200 text-stone-700'
                         }`}
                       >
@@ -918,13 +927,13 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                         </summary>
                         <div className="mt-3 space-y-3">
                           <div>
-                            <div className={`text-[10px] font-black uppercase tracking-[0.2em] mb-1 ${isDarkMode ? 'text-neutral-400' : 'text-stone-600'}`}>
+                            <div className={`text-[11px] font-black uppercase tracking-[0.2em] mb-1 ${isDarkMode ? 'text-neutral-400' : 'text-stone-600'}`}>
                               {openclawText.whatIIdentified}
                             </div>
                             <p className="font-semibold">{specialPrSummary.issue}</p>
                           </div>
                           <div>
-                            <div className={`text-[10px] font-black uppercase tracking-[0.2em] mb-1 ${isDarkMode ? 'text-neutral-400' : 'text-stone-600'}`}>
+                            <div className={`text-[11px] font-black uppercase tracking-[0.2em] mb-1 ${isDarkMode ? 'text-neutral-400' : 'text-stone-600'}`}>
                               {openclawText.whatIDidToFixIt}
                             </div>
                             <p className="font-semibold">{specialPrSummary.fix}</p>
@@ -934,7 +943,7 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
                     )}
                     {specialPrRelease && (
                       <details
-                        className={`rounded-2xl border px-4 py-3 text-xs leading-relaxed mb-4 ${
+                        className={`rounded-2xl border px-4 py-3 text-[13px] leading-relaxed ${
                           isDarkMode ? 'bg-white/5 border-white/10 text-neutral-200' : 'bg-stone-100 border-stone-200 text-stone-700'
                         }`}
                       >
@@ -986,7 +995,7 @@ export const Contributions: React.FC<ContributionsProps> = ({ themeColors }) => 
               );
             })()}
 
-            <div className="flex justify-end">
+            <div className="flex justify-end mt-2">
               <a
                 href={item.url}
                 target="_blank"
