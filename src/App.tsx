@@ -4,8 +4,7 @@ import { LanguageToggle } from './components/LanguageToggle';
 import { ThemeToggle } from './components/ThemeToggle';
 import { SplashScreen } from './components/SplashScreen';
 import { Terminal } from './components/Terminal';
-import { TerminalToggle } from './components/TerminalToggle';
-import { CONTENT, DATA } from './data/content';
+import { CONTENT } from './data/content';
 
 const Scene3D = lazy(() => import('./components/Scene3D').then((m) => ({ default: m.Scene3D })));
 const Home = lazy(() => import('./sections/Home').then((m) => ({ default: m.Home })));
