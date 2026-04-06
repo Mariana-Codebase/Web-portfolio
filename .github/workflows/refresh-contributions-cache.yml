@@ -11,19 +11,38 @@ permissions:
 jobs:
   refresh-cache:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     concurrency:
       group: refresh-contributions-cache
       cancel-in-progress: false
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 24
+
+      - name: Clear API cache
+        env:
+          SITE_URL: ${{ vars.SITE_URL || secrets.SITE_URL }}
+          GITHUB_USER: ${{ vars.GITHUB_USER || secrets.GITHUB_USER }}
+          GITHUB_CONTRIBUTIONS_SINCE: ${{ vars.GITHUB_CONTRIBUTIONS_SINCE || secrets.GITHUB_CONTRIBUTIONS_SINCE }}
+          CLEAR_CACHE_ADMIN_KEY: ${{ vars.CLEAR_CACHE_ADMIN_KEY || secrets.CLEAR_CACHE_ADMIN_KEY }}
+        run: |
+          if [ -z "${CLEAR_CACHE_ADMIN_KEY}" ]; then
+            echo "CLEAR_CACHE_ADMIN_KEY not set. Skipping cache clear."
+            exit 0
+          fi
+          curl -fsS "${SITE_URL%/}/api/contributions?user=${GITHUB_USER}&limit=6&includeRefs=1&since=${GITHUB_CONTRIBUTIONS_SINCE}&fresh=1&clearCache=1&t=$(date +%s)" \
+            -H "x-clear-cache-key: ${CLEAR_CACHE_ADMIN_KEY}"
+
+      - name: Remove contributions cache file
+        run: rm -f public/contributions-cache.json
 
       - name: Refresh cache file
         env:

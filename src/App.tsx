@@ -131,21 +131,14 @@ const AppContent: React.FC = () => {
         onSetLanguage={setLanguage}
       />
 
-      <footer className={`fixed bottom-0 left-0 right-0 px-4 md:px-8 py-4 md:py-6 flex flex-col md:flex-row justify-between items-center gap-2 md:gap-0 text-[9px] md:text-[10px] font-black tracking-[0.2em] md:tracking-[0.3em] z-50 uppercase backdrop-blur-2xl border-t ${
+      <footer className={`fixed bottom-0 left-0 right-0 px-4 md:px-8 py-4 md:py-6 flex items-center justify-center text-[9px] md:text-[10px] font-black tracking-[0.2em] md:tracking-[0.3em] z-50 uppercase backdrop-blur-2xl border-t ${
         isDarkMode 
           ? 'text-white/30 bg-black/60 border-white/10' 
           : 'text-stone-600/60 bg-white/80 border-stone-300/60'
       }`}>
-        <div className="flex flex-wrap gap-3 items-center justify-center md:justify-start">
-          <TerminalToggle 
-            onClick={() => setIsTerminalOpen(true)} 
-            isDarkMode={isDarkMode} 
-          />
-          <span className="pointer-events-none">{t.status}</span>
-        </div>
         <span className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 pointer-events-none text-center">
-          <span>{t.designedBy} {DATA.alias}</span>
-          <span>© {new Date().getFullYear()}</span>
+          <span>Designed and created by MARIANA-CODEBASE</span>
+          <span>© 2026</span>
         </span>
       </footer>
       </div>

@@ -19,6 +19,7 @@ if (!SITE_URL) {
 const SINCE = process.env.GITHUB_CONTRIBUTIONS_SINCE || "2025-01-01";
 const cacheBust = Date.now();
 const API_URL = `${SITE_URL.replace(/\/$/, "")}/api/contributions?user=${encodeURIComponent(USER)}&limit=6&includeRefs=1&since=${encodeURIComponent(SINCE)}&fresh=1&t=${cacheBust}`;
+const FORCED_OPENCLAW_REFERENCE = "openclaw/openclaw#29198";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -36,14 +37,27 @@ async function main() {
       console.error("Invalid API response shape");
       process.exit(1);
     }
+    const normalizedContributions = data.contributions
+      .filter((item) => {
+        const reference = String(item?.reference ?? "").toLowerCase();
+        if (reference === FORCED_OPENCLAW_REFERENCE) return true;
+        return item?.status === "MERGED";
+      })
+      .map((item) => {
+        const reference = String(item?.reference ?? "").toLowerCase();
+        if (reference === FORCED_OPENCLAW_REFERENCE) {
+          return { ...item, status: "MERGED" };
+        }
+        return item;
+      });
     const payload = {
       user: data.user,
-      contributions: data.contributions,
+      contributions: normalizedContributions,
       since: SINCE,
       cachedAt: new Date().toISOString()
     };
     fs.writeFileSync(CACHE_PATH, JSON.stringify(payload, null, 0), "utf8");
-    console.log("OK: contributions-cache.json updated with", data.contributions.length, "contributions");
+    console.log("OK: contributions-cache.json updated with", normalizedContributions.length, "contributions");
   } catch (err) {
     console.error(err);
     process.exit(1);

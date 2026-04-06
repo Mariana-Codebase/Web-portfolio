@@ -39,8 +39,9 @@ export interface Content {
   stackTitle: string;
   stackCategories: {
     secnet: string;
+    monitoring: string;
     automation: string;
-    pipeline: string;
+    development: string;
   };
   langTitle: string;
   projectsTitle: string;
@@ -80,9 +81,10 @@ export const DATA = {
       "NSM": "NSM"
   } as Record<string, string>,
   skills: {
-    secnet: ["CCNAV7", "Network Analysis", "Hardware Security"],
-    automation: ["Python", "Linux CLI", "Bash Scripting"],
-    pipeline: ["AWS", "Docker", "Pipeline Hardening"]
+    secnet: ["CyberOps Associate", "CCNAV7", "Burp Suite", "OWASP ZAP", "Nmap", "Metasploit", "Wireshark", "Network Analysis"],
+    monitoring: ["Splunk", "OpenSearch", "Kibana", "Grafana", "SIEM", "Active Directory"],
+    automation: ["Python", "Bash Scripting", "PowerShell", "Linux CLI"],
+    development: ["FastAPI", "React", "TypeScript", "SQL", "MongoDB"]
   },
   langs: [
     { n: { es: "ESPAÑOL", en: "SPANISH" }, l: { es: "Nativo", en: "Native" } },
@@ -107,16 +109,17 @@ export const DATA = {
 export const CONTENT: Record<Language, Content> = {
   es: {
     role: "Estudiante de Ingeniería Informática orientada a ciberseguridad",
-    bio: "Enfocada en la intersección entre código, infraestructura y seguridad. Construyo herramientas en Python para automatizar flujos de seguridad y actualmente contribuyo a la arquitectura de seguridad core de OpenClaw, que actualmente es el proyecto open source de más rápido crecimiento en la historia. Con parches de nivel producción en v2026.2.24 y v2026.3.1, mi trabajo reciente en hardening de gateway fue integrado manualmente por el fundador del proyecto, validando el impacto de mi código en infraestructura global.",
+    bio: "Enfocada en ciberseguridad y automatización. Contribuyo a código abierto en proyectos como OpenClaw, participo en Bug Bounty en HackerOne, busco vulnerabilidades y soluciones en sistemas reales.",
     nav: { home: "INICIO", about: "PERFIL", certs: "FORMACIÓN", projects: "PROYECTOS", contributions: "CONTRIBUCIONES" },
     profileTitle: "/ Perfil Profesional",
     profileSlogan: "Código, infraestructura y seguridad.",
-    profileDesc: "Estudiante de último año de Ingeniería Informática enfocada en la automatización de ciberseguridad e infraestructuras. Con certificación CCNAV7, diseño herramientas en Python para el endurecimiento de sistemas y la optimización de seguridad en pipelines CI/CD.",
+    profileDesc: "CyberOps Associate y CCNAV7 Certified. En seguridad, trabajo en análisis de vulnerabilidades, ejercicios de Red Team, Active Directory, threat hunting y monitoreo con stacks como Splunk, OpenSearch y Grafana. En desarrollo, construyo APIs con FastAPI, automatizo con Python, Bash y PowerShell, y trabajo con React, TypeScript, SQL, MongoDB y Docker. Me muevo entre el rol ofensivo y el de desarrollo, entiendo los sistemas desde adentro y desde afuera.",
     stackTitle: "Stack Tecnológico",
     stackCategories: {
-      secnet: "Redes y seguridad",
-      automation: "Automatización y herramientas",
-      pipeline: "CI/CD y DevOps"
+      secnet: "SECURITY & NETWORKS",
+      monitoring: "THREAT HUNTING & MONITORING",
+      automation: "AUTOMATION & TOOLING",
+      development: "DEVELOPMENT"
     },
     langTitle: "Idiomas",
     projectsTitle: "Proyectos_",
@@ -129,16 +132,17 @@ export const CONTENT: Record<Language, Content> = {
   },
   en: {
     role: "Computer Engineering student focused on security",
-    bio: "Focused on the intersection of code, infrastructure, and security. I build Python-based tools to automate security workflows and currently contribute core security architecture to OpenClaw, which is currently the fastest-growing open-source project in history. With production-level patches in v2026.2.24 and v2026.3.1, my recent work on gateway hardening was manually integrated by the project's founder, validating the impact of my code on global infrastructure.",
+    bio: "Focused on cybersecurity and automation. I contribute to open source projects like OpenClaw, participate in Bug Bounty on HackerOne, and look for vulnerabilities and solutions in real-world systems.",
     nav: { home: "HOME", about: "PROFILE", certs: "EDUCATION", projects: "PROJECTS", contributions: "CONTRIBUTIONS" },
     profileTitle: "/ Professional Profile",
     profileSlogan: "Securing the digital infrastructure.",
-    profileDesc: "Final-year Computer Engineering student focused on cybersecurity and infrastructure automation. CCNAv7 certified. I build Python tools for system hardening and CI/CD pipeline security optimization.",
+    profileDesc: "CyberOps Associate and CCNAv7 Certified. In security, I work on vulnerability analysis, Red Team exercises, Active Directory, threat hunting, and monitoring with stacks like Splunk, OpenSearch, and Grafana. In development, I build APIs with FastAPI, automate with Python, Bash, and PowerShell, and work with React, TypeScript, SQL, MongoDB, and Docker. I move between offensive security and development, understanding systems from both the inside and the outside.",
     stackTitle: "Security‑focused tech stack",
     stackCategories: {
       secnet: "Security & Networks",
+      monitoring: "Threat Hunting & Monitoring",
       automation: "Automation & Tooling",
-      pipeline: "CI/CD & DevOps"
+      development: "Development"
     },
     langTitle: "Languages",
     projectsTitle: "Projects_",
