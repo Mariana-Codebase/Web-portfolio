@@ -24,6 +24,7 @@ const helpMessage = `Available commands:
   p             - Navigate to projects section
   c             - Navigate to contributions section
   ed            - Navigate to education section
+  a             - Navigate to achievements section
   h             - Navigate to home section
   es/en         - Quick language change (e.g., 'español' or 'english')
   d/l           - Quick theme change (e.g., 'd' for dark, 'l' for light)
@@ -52,6 +53,10 @@ const helpMessage = `Available commands:
       onNavigate('certs');
       return 'Navigating to education section...';
     },
+    a: () => {
+      onNavigate('achievements');
+      return 'Navigating to achievements section...';
+    },
     h: () => {
       onNavigate('home');
       return 'Navigating to home section...';
@@ -71,6 +76,14 @@ const helpMessage = `Available commands:
     education: () => {
       onNavigate('certs');
       return 'Navigating to education section...';
+    },
+    achievements: () => {
+      onNavigate('achievements');
+      return 'Navigating to achievements section...';
+    },
+    logros: () => {
+      onNavigate('achievements');
+      return 'Navigating to achievements section...';
     },
     home: () => {
       onNavigate('home');

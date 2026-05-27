@@ -1,6 +1,20 @@
 export type Language = 'es' | 'en';
 export type Theme = 'dark' | 'light';
-export type Section = 'home' | 'about' | 'certs' | 'projects' | 'contributions';
+export type Section = 'home' | 'about' | 'certs' | 'projects' | 'achievements' | 'contributions';
+
+export interface AchievementHighlight {
+  icon: string;
+  label: { es: string; en: string };
+}
+
+export interface Achievement {
+  project: string;
+  event: { es: string; en: string };
+  competitors?: { es: string; en: string };
+  summary: { es: string; en: string };
+  url?: string;
+  highlights?: AchievementHighlight[];
+}
 
 export interface Project {
   t: string;
@@ -31,8 +45,12 @@ export interface Content {
     about: string;
     certs: string;
     projects: string;
+    achievements: string;
     contributions: string;
   };
+  achievementsTitle: string;
+  achievementsSubtitle: string;
+  achievementsLeaderboard: string;
   profileTitle: string;
   profileSlogan: string;
   profileDesc: string;
@@ -103,14 +121,31 @@ export const DATA = {
     { t: { es: "Cybersecurity Essentials", en: "Cybersecurity Essentials" }, i: "Universidad Nacional de Colombia / Cisco", y: "2022", c: "CERT" as const, u: "/certificados/1000085358 Certificado CSE.pdf" },
     { t: { es: "Ethical Hacking", en: "Ethical Hacking" }, i: "Hacker Mentor", y: "2022", c: "CERT" as const, u: "/certificados/Ethical Hacking.pdf" },
     { t: { es: "Internship Pragma", en: "Internship Pragma" }, i: "Pragma/ CUEE 2.0", y: "2023", c: "INTERN" as const, u: "/certificados/Pasantía Pragma.pdf" }
-  ]
+  ],
+  achievements: [
+    {
+      project: "Griffin",
+      event: {
+        es: "Dev3pack Hackathon",
+        en: "Dev3pack Hackathon"
+      },
+      summary: {
+        es: "🏆 Griffin ganó Mejor integración ElevenLabs, Mejor de Colombia, 3.º en Latinoamérica y Top 20 global en el Hackathon de Dev3pack frente a más de 380 proyectos.",
+        en: "🏆 Griffin won Best ElevenLabs Integration, Best of Colombia, 3rd in Latin America, and Top 20 Global at Dev3pack's Hackathon against 380+ projects."
+      },
+      url: "https://hack.dev3pack.xyz/leaderboard"
+    }
+  ] as Achievement[]
 };
 
 export const CONTENT: Record<Language, Content> = {
   es: {
     role: "Estudiante de Ingeniería Informática orientada a ciberseguridad",
     bio: "Enfocada en ciberseguridad y automatización. Contribuyo a código abierto en proyectos como OpenClaw, participo en Bug Bounty en HackerOne, busco vulnerabilidades y soluciones en sistemas reales.",
-    nav: { home: "INICIO", about: "PERFIL", certs: "FORMACIÓN", projects: "PROYECTOS", contributions: "CONTRIBUCIONES" },
+    nav: { home: "INICIO", about: "PERFIL", certs: "FORMACIÓN", projects: "PROYECTOS", achievements: "LOGROS", contributions: "CONTRIBUCIONES" },
+    achievementsTitle: "Logros_",
+    achievementsSubtitle: "Reconocimientos y resultados en hackathons, competencias y proyectos destacados.",
+    achievementsLeaderboard: "Ver leaderboard",
     profileTitle: "/ Perfil Profesional",
     profileSlogan: "Código, infraestructura y seguridad.",
     profileDesc: "CyberOps Associate y CCNAV7 Certified. En seguridad, trabajo en análisis de vulnerabilidades, ejercicios de Red Team, Active Directory, threat hunting y monitoreo con stacks como Splunk, OpenSearch y Grafana. En desarrollo, construyo APIs con FastAPI, automatizo con Python, Bash y PowerShell, y trabajo con React, TypeScript, SQL, MongoDB y Docker. Me muevo entre el rol ofensivo y el de desarrollo, entiendo los sistemas desde adentro y desde afuera.",
@@ -133,7 +168,10 @@ export const CONTENT: Record<Language, Content> = {
   en: {
     role: "Computer Engineering student focused on security",
     bio: "Focused on cybersecurity and automation. I contribute to open source projects like OpenClaw, participate in Bug Bounty on HackerOne, and look for vulnerabilities and solutions in real-world systems.",
-    nav: { home: "HOME", about: "PROFILE", certs: "EDUCATION", projects: "PROJECTS", contributions: "CONTRIBUTIONS" },
+    nav: { home: "HOME", about: "PROFILE", certs: "EDUCATION", projects: "PROJECTS", achievements: "ACHIEVEMENTS", contributions: "CONTRIBUTIONS" },
+    achievementsTitle: "Achievements_",
+    achievementsSubtitle: "Awards and results from hackathons, competitions, and standout projects.",
+    achievementsLeaderboard: "View leaderboard",
     profileTitle: "/ Professional Profile",
     profileSlogan: "Securing the digital infrastructure.",
     profileDesc: "CyberOps Associate and CCNAv7 Certified. In security, I work on vulnerability analysis, Red Team exercises, Active Directory, threat hunting, and monitoring with stacks like Splunk, OpenSearch, and Grafana. In development, I build APIs with FastAPI, automate with Python, Bash, and PowerShell, and work with React, TypeScript, SQL, MongoDB, and Docker. I move between offensive security and development, understanding systems from both the inside and the outside.",
